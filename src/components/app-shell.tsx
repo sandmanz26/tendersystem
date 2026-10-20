@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { useAppStore } from "@/store/app-store"
 
 /* Routes that are task screens: no tab bar, full height for the task. */
-const FOCUS_ROUTES = [/\/scan\/.+/, /^\/lapor$/]
+const FOCUS_ROUTES = [/\/scan\/.+/, /^\/new-report$/]
 
 export function AppShell() {
   const { pathname } = useLocation()
@@ -58,12 +58,12 @@ function Tab({
 
 function BottomNav() {
   const { reports, userId } = useAppStore()
-  const hasOpen = reports.some((r) => r.status === "Terbuka" && r.by !== userId)
+  const hasOpen = reports.some((r) => r.status === "Open" && r.by !== userId)
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[440px] px-3 pb-[max(env(safe-area-inset-bottom),12px)]">
       <div className="flex h-16 items-center rounded-[22px] bg-card/90 px-1 shadow-[0_0_0_1px_oklch(0_0_0/0.05),0_10px_30px_-8px_oklch(0_0_0/0.2)] backdrop-blur-xl">
-        <Tab to="/" label="Event" icon={CalendarDays} end />
-        <Tab to="/barang" label="Barang" icon={Package} />
+        <Tab to="/" label="Events" icon={CalendarDays} end />
+        <Tab to="/items" label="Items" icon={Package} />
         <NavLink
           to="/scan"
           aria-label="Scan"
@@ -76,8 +76,8 @@ function BottomNav() {
         >
           <ScanLine className="size-6" strokeWidth={2.2} />
         </NavLink>
-        <Tab to="/laporan" label="Laporan" icon={ClipboardList} dot={hasOpen} />
-        <Tab to="/profil" label="Profil" icon={CircleUserRound} />
+        <Tab to="/reports" label="Reports" icon={ClipboardList} dot={hasOpen} />
+        <Tab to="/profile" label="Profile" icon={CircleUserRound} />
       </div>
     </nav>
   )

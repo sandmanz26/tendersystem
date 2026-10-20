@@ -56,11 +56,11 @@ export function PhaseCompleteSheet({
     )
     setBusy(false)
     if (!ok) {
-      toast.error("Fase belum bisa ditutup. Data berubah, cek ulang daftar barang.")
+      toast.error("This phase can't be closed yet. Data changed, recheck the item list.")
       onOpenChange(false)
       return
     }
-    toast.success(next ? `Masuk fase ${next.label}` : "Event ditutup. Terima kasih!")
+    toast.success(next ? `Moved to ${next.label}` : "Event closed. Thank you!")
     onOpenChange(false)
     onDone?.()
   }
@@ -69,31 +69,31 @@ export function PhaseCompleteSheet({
     <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <DrawerContent>
         <DrawerHeader className="pb-0">
-          <DrawerTitle className="text-lg">Selesaikan {phase.label}</DrawerTitle>
+          <DrawerTitle className="text-lg">Complete {phase.label}</DrawerTitle>
           <DrawerDescription>
             {next
-              ? `Event pindah ke ${next.label}. Fase yang ditutup tidak bisa dibuka lagi dari aplikasi.`
-              : "Semua barang kembali. Event akan ditutup."}
+              ? `The event moves to ${next.label}. A closed phase can't be reopened from the app.`
+              : "All items are back. The event will be closed."}
           </DrawerDescription>
         </DrawerHeader>
 
         <div className="space-y-3 overflow-y-auto px-4 pt-4">
           {phase.requiresScan ? (
             <div className="grid grid-cols-3 gap-2 text-center">
-              <Stat value={progress.scanned} label="Discan" />
-              <Stat value={progress.reported} label="Dilaporkan" />
-              <Stat value={progress.flagged.length} label="Perlu dicek" warn={progress.flagged.length > 0} />
+              <Stat value={progress.scanned} label="Scanned" />
+              <Stat value={progress.reported} label="Reported" />
+              <Stat value={progress.flagged.length} label="To check" warn={progress.flagged.length > 0} />
             </div>
           ) : (
             <Callout icon={CircleCheck} tone="success">
-              {progress.tasksDone.length} checklist selesai
+              {progress.tasksDone.length} checklist items done
             </Callout>
           )}
 
           {progress.flagged.length > 0 && (
             <Callout icon={TriangleAlert}>
-              {progress.flagged.length} barang tidak tercatat di checkpoint sebelumnya. Koordinator akan
-              melihat catatan ini.
+              {progress.flagged.length} items weren't recorded at the previous checkpoint. The coordinator
+              will see this note.
             </Callout>
           )}
 
@@ -101,16 +101,16 @@ export function PhaseCompleteSheet({
             <div className="space-y-3 pt-1">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <PenLine className="size-4" />
-                Serah terima · {phase.handover!.party}
+                Handover · {phase.handover!.party}
               </div>
               <p className="-mt-1 text-[13px] text-muted-foreground">{phase.handover!.hint}</p>
               <div className="space-y-2">
-                <Label htmlFor="handover-name">Nama penerima</Label>
+                <Label htmlFor="handover-name">Receiver's name</Label>
                 <Input
                   id="handover-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Nama lengkap"
+                  placeholder="Full name"
                   autoComplete="off"
                 />
               </div>
@@ -121,11 +121,11 @@ export function PhaseCompleteSheet({
 
         <DrawerFooter>
           <Button size="lg" variant="brand" disabled={!ready || busy} onClick={submit}>
-            {next ? `Selesai, lanjut ke ${next.label}` : "Tutup event"}
+            {next ? `Done, continue to ${next.label}` : "Close event"}
           </Button>
           {needsHandover && !ready && (
             <p className="text-center text-xs text-muted-foreground">
-              Isi nama dan tanda tangan untuk melanjutkan
+              Add a name and signature to continue
             </p>
           )}
         </DrawerFooter>

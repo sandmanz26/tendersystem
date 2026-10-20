@@ -13,22 +13,22 @@ import { cn } from "@/lib/utils"
 import { getWhereabouts } from "@/lib/whereabouts"
 import { useAppStore } from "@/store/app-store"
 
-const CATEGORIES = ["Semua", ...new Set(ASSETS.map((a) => a.category))] as const
+const CATEGORIES = ["All", ...new Set(ASSETS.map((a) => a.category))] as const
 
 export function InventoryPage() {
   const { events, scans } = useAppStore()
   const [q, setQ] = React.useState("")
-  const [cat, setCat] = React.useState<AssetCategory | "Semua">("Semua")
+  const [cat, setCat] = React.useState<AssetCategory | "All">("All")
   const s = q.trim().toLowerCase()
 
-  const items = ASSETS.filter((a) => cat === "Semua" || a.category === cat).filter(
+  const items = ASSETS.filter((a) => cat === "All" || a.category === cat).filter(
     (a) => !s || a.name.toLowerCase().includes(s) || a.code.toLowerCase().includes(s) || a.location.toLowerCase().includes(s)
   )
   const outCount = ASSETS.filter((a) => getWhereabouts(a.code, events, scans).at === "event").length
 
   return (
     <div>
-      <TopBar large back={false} subtitle={`${ASSETS.length} aset · ${outCount} sedang di luar`} title="Barang" />
+      <TopBar large back={false} subtitle={`${ASSETS.length} assets · ${outCount} out right now`} title="Items" />
       <div className="space-y-3 px-4">
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -36,7 +36,7 @@ export function InventoryPage() {
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Cari nama, kode, atau rak"
+            placeholder="Search name, code, or rack"
             className="pl-10"
           />
         </div>
@@ -58,28 +58,28 @@ export function InventoryPage() {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState icon={PackageSearch} title="Barang tidak ditemukan" body="Coba kata kunci lain atau kode di label." />
+        <EmptyState icon={PackageSearch} title="No items found" body="Try another keyword or the code on the label." />
       ) : (
         <>
-          <SectionLabel>{items.length} barang</SectionLabel>
+          <SectionLabel>{items.length} items</SectionLabel>
           <ul className="list-card">
             {items.map((a) => {
               const where = getWhereabouts(a.code, events, scans)
               return (
                 <li key={a.code}>
-                  <Link to={`/barang/${a.code}`} className="flex items-center gap-3 px-4 py-3 active:bg-muted">
+                  <Link to={`/items/${a.code}`} className="flex items-center gap-3 px-4 py-3 active:bg-muted">
                     <CategoryIcon category={a.category} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{a.name}</p>
                       <p className="truncate text-xs text-muted-foreground">
                         <span className="font-mono text-[11px]">{a.code}</span> ·{" "}
-                        {where.at === "event" ? `di ${where.event.couple}` : a.location}
+                        {where.at === "event" ? `at ${where.event.couple}` : a.location}
                       </p>
                     </div>
-                    {a.condition !== "Baik" ? (
+                    {a.condition !== "Good" ? (
                       <Badge variant="warning">{a.condition}</Badge>
                     ) : where.at === "event" ? (
-                      <Badge variant="success">Dipakai</Badge>
+                      <Badge variant="success">In use</Badge>
                     ) : null}
                     <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
                   </Link>

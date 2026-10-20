@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PHASES } from "@/data/phases"
 import type { WeddingEvent } from "@/data/types"
-import { clock, longDate, mapsLink, stamp } from "@/lib/format"
+import { clock, formatDate, mapsLink, stamp } from "@/lib/format"
 import { getAsset, getPerson, personName } from "@/lib/lookup"
 import { getEventProgress, isClosed, type PhaseProgress } from "@/lib/progress"
 import { inMinutes, nowAndNext } from "@/lib/rundown"
@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils"
 import { useAppStore } from "@/store/app-store"
 import { NotFound } from "./not-found"
 
-const TABS = ["info", "barang", "tim", "laporan"] as const
+const TABS = ["info", "items", "team", "reports"] as const
 type Tab = (typeof TABS)[number]
 
 export function EventDetailPage() {
@@ -67,22 +67,22 @@ export function EventDetailPage() {
       <section className="px-5 pt-3 pb-5">
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="secondary">{event.kind}</Badge>
-          <Badge variant="secondary">{event.guests} tamu</Badge>
+          <Badge variant="secondary">{event.guests} guests</Badge>
           <Badge variant="secondary">{event.theme}</Badge>
         </div>
         <h1 className="mt-3 text-[32px] leading-[1.05] font-bold tracking-tight">{event.couple}</h1>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <Fact label="Tanggal" value={longDate(event.date).replace(/^\w+, /, "").replace(/ \d{4}$/, "")} />
+          <Fact label="Date" value={formatDate(event.date, { weekday: "short", day: "numeric", month: "short" })} />
           <Fact label="Call time" value={event.callTime} />
-          <Fact label="Acara" value={`${event.startTime}–${event.endTime}`} />
+          <Fact label="Event" value={`${event.startTime}–${event.endTime}`} />
         </div>
       </section>
 
       {!assigned && (
         <Callout icon={EyeOff} tone="info" className="mx-4 mb-4">
-          Kamu tidak ditugaskan di event ini. Kamu bisa melihat info, tapi tidak bisa scan atau
-          menutup fase.
+          You're not assigned to this event. You can view it, but you can't scan or
+          close phases.
         </Callout>
       )}
 
@@ -97,43 +97,43 @@ export function EventDetailPage() {
         <div className="sticky top-14 z-20 bg-background/85 px-4 py-2 backdrop-blur-xl">
           <TabsList>
             <TabsTrigger value="info">Info</TabsTrigger>
-            <TabsTrigger value="barang">
-              Barang <Count n={event.assetCodes.length} />
+            <TabsTrigger value="items">
+              Items <Count n={event.assetCodes.length} />
             </TabsTrigger>
-            <TabsTrigger value="tim">
-              Tim <Count n={event.crew.length} />
+            <TabsTrigger value="team">
+              Team <Count n={event.crew.length} />
             </TabsTrigger>
-            <TabsTrigger value="laporan">
-              Lapor <Count n={eventReports.length} />
+            <TabsTrigger value="reports">
+              Reports <Count n={eventReports.length} />
             </TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="info">
           <InfoTab event={event} />
         </TabsContent>
-        <TabsContent value="barang">
+        <TabsContent value="items">
           <ItemsTab event={event} progress={progress} />
         </TabsContent>
-        <TabsContent value="tim">
+        <TabsContent value="team">
           <TeamTab event={event} />
         </TabsContent>
-        <TabsContent value="laporan">
+        <TabsContent value="reports">
           <div className="grid grid-cols-2 gap-2 px-4 pt-2 pb-1">
             <Button asChild variant="outline">
-              <Link to={`/lapor?event=${event.id}&type=issue`}>
+              <Link to={`/new-report?event=${event.id}&type=issue`}>
                 <TriangleAlert />
-                Lapor masalah
+                Report issue
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link to={`/lapor?event=${event.id}&type=damage`}>
+              <Link to={`/new-report?event=${event.id}&type=damage`}>
                 <PackageX className="text-clay" />
-                Barang rusak
+                Damaged item
               </Link>
             </Button>
           </div>
           {eventReports.length === 0 ? (
-            <EmptyState icon={ClipboardList} title="Belum ada laporan" body="Semua aman sejauh ini." />
+            <EmptyState icon={ClipboardList} title="No reports yet" body="All good so far." />
           ) : (
             <div className="list-card mt-3">
               {eventReports.map((r) => (
@@ -161,7 +161,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 }
 
 function NowNext({ event }: { event: WeddingEvent }) {
-  // Re-render every minute so "x mnt lagi" stays honest.
+  // Re-render every minute so "in x min" stays honest.
   const [, tick] = React.useReducer((x: number) => x + 1, 0)
   React.useEffect(() => {
     const t = window.setInterval(tick, 60_000)
@@ -174,17 +174,17 @@ function NowNext({ event }: { event: WeddingEvent }) {
       <div className="rounded-2xl bg-card p-3 shadow-soft">
         <p className="flex items-center gap-1.5 text-[11px] font-semibold text-brand">
           <span className="size-1.5 animate-pulse rounded-full bg-brand" />
-          Sekarang
+          Now
         </p>
-        <p className="mt-1 line-clamp-2 text-[13px] font-semibold">{now ? now.label : "Belum mulai"}</p>
-        {now && <p className="text-[11px] text-muted-foreground tabular">sejak {now.time}</p>}
+        <p className="mt-1 line-clamp-2 text-[13px] font-semibold">{now ? now.label : "Not started"}</p>
+        {now && <p className="text-[11px] text-muted-foreground tabular">since {now.time}</p>}
       </div>
       <div className="rounded-2xl bg-card p-3 shadow-soft">
         <p className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
           <Clock className="size-3" />
-          Berikutnya
+          Next
         </p>
-        <p className="mt-1 line-clamp-2 text-[13px] font-semibold">{next ? next.label : "Selesai"}</p>
+        <p className="mt-1 line-clamp-2 text-[13px] font-semibold">{next ? next.label : "Done"}</p>
         {next && (
           <p className="text-[11px] text-muted-foreground tabular">
             {next.time} · {inMinutes(minutesToNext!)}
@@ -217,10 +217,10 @@ function PhasePanel({
             <CircleCheck className="size-5" />
           </span>
           <div>
-            <p className="font-semibold">Event selesai</p>
+            <p className="font-semibold">Event complete</p>
             {last && (
               <p className="text-xs text-muted-foreground">
-                Ditutup {stamp(last.at)} · {personName(last.by)}
+                Closed {stamp(last.at)} · {personName(last.by)}
               </p>
             )}
           </div>
@@ -249,7 +249,7 @@ function PhasePanel({
           </ProgressRing>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-medium text-muted-foreground">
-              Fase {event.phaseIndex + 1} dari {PHASES.length}
+              Phase {event.phaseIndex + 1} of {PHASES.length}
             </p>
             <p className="text-lg leading-tight font-bold">{phase.label}</p>
             <p className="mt-0.5 text-[13px] text-muted-foreground">{phase.hint}</p>
@@ -260,20 +260,20 @@ function PhasePanel({
           {phase.requiresScan && (
             <Badge variant={progress.complete ? "success" : "outline"}>
               <ScanLine />
-              Wajib scan
+              Scan required
             </Badge>
           )}
           {phase.handover && (
             <Badge variant="outline">
               <PenLine />
-              Tanda tangan {phase.handover.party.toLowerCase()}
+              {phase.handover.party} signs
             </Badge>
           )}
-          {progress.reported > 0 && <Badge variant="warning">{progress.reported} dilaporkan</Badge>}
+          {progress.reported > 0 && <Badge variant="warning">{progress.reported} reported</Badge>}
           {progress.flagged.length > 0 && (
             <Badge variant="warning">
               <TriangleAlert />
-              {progress.flagged.length} lewat checkpoint
+              {progress.flagged.length} skipped checkpoint
             </Badge>
           )}
         </div>
@@ -314,7 +314,7 @@ function PhasePanel({
             <Button asChild size="lg" className="flex-1">
               <Link to={`/scan/${event.id}`}>
                 <ScanLine />
-                Mulai scan
+                Start scan
               </Link>
             </Button>
           )}
@@ -326,7 +326,7 @@ function PhasePanel({
               disabled={!progress.complete}
               onClick={() => setSheet(true)}
             >
-              {next ? `Lanjut ke ${next.short}` : "Tutup event"}
+              {next ? `Continue to ${next.short}` : "Close event"}
             </Button>
           )}
         </div>
@@ -345,7 +345,7 @@ function InfoTab({ event }: { event: WeddingEvent }) {
 
   return (
     <div className="pb-6">
-      <SectionLabel>Lokasi</SectionLabel>
+      <SectionLabel>Location</SectionLabel>
       <div className="list-card">
         <div className="px-4 py-3.5">
           <p className="font-semibold">{event.venue.name}</p>
@@ -358,13 +358,13 @@ function InfoTab({ event }: { event: WeddingEvent }) {
           <Button asChild variant="secondary" size="sm">
             <a href={mapsLink(`${event.venue.name} ${event.venue.address}`)} target="_blank" rel="noreferrer">
               <Navigation />
-              Buka Maps
+              Open Maps
             </a>
           </Button>
           <Button asChild variant="secondary" size="sm">
             <a href={`tel:${event.venue.pic.phone}`}>
               <Phone />
-              PIC venue
+              Venue contact
             </a>
           </Button>
         </div>
@@ -389,7 +389,7 @@ function InfoTab({ event }: { event: WeddingEvent }) {
 
       {event.notes.length > 0 && (
         <>
-          <SectionLabel>Catatan untuk crew</SectionLabel>
+          <SectionLabel>Crew notes</SectionLabel>
           <ul className="list-card">
             {event.notes.map((n, i) => (
               <li key={i} className="flex gap-3 px-4 py-3 text-sm">
@@ -403,22 +403,22 @@ function InfoTab({ event }: { event: WeddingEvent }) {
         </>
       )}
 
-      <SectionLabel>Kontak penting</SectionLabel>
+      <SectionLabel>Key contacts</SectionLabel>
       <div className="list-card">
-        {leadPerson && <PersonRow person={leadPerson} detail="Koordinator lapangan" />}
+        {leadPerson && <PersonRow person={leadPerson} detail="Field coordinator" />}
         <PersonRow
           person={{ id: "c0", name: event.client.name, role: event.client.relation, phone: event.client.phone }}
-          detail={`Klien · ${event.client.relation}`}
+          detail={`Client · ${event.client.relation}`}
         />
         <PersonRow
-          person={{ id: "c1", name: event.venue.pic.name, role: "PIC venue", phone: event.venue.pic.phone }}
-          detail="PIC venue"
+          person={{ id: "c1", name: event.venue.pic.name, role: "Venue contact", phone: event.venue.pic.phone }}
+          detail="Venue contact"
         />
       </div>
 
       {log.length > 0 && (
         <>
-          <SectionLabel>Riwayat fase</SectionLabel>
+          <SectionLabel>Phase history</SectionLabel>
           <ol className="list-card">
             {log.map((entry, i) => (
               <li key={i} className="flex items-center gap-3 px-4 py-3">
@@ -427,13 +427,13 @@ function InfoTab({ event }: { event: WeddingEvent }) {
                   <p className="text-sm font-medium">{PHASES.find((p) => p.key === entry.phase)?.label}</p>
                   <p className="text-xs text-muted-foreground">
                     {stamp(entry.at)} · {personName(entry.by)}
-                    {entry.handover && ` · diterima ${entry.handover.name}`}
+                    {entry.handover && ` · received by ${entry.handover.name}`}
                   </p>
                 </div>
                 {entry.handover && (
                   <img
                     src={entry.handover.signature}
-                    alt={`Tanda tangan ${entry.handover.name}`}
+                    alt={`Signature of ${entry.handover.name}`}
                     className="h-8 w-16 rounded-md bg-secondary object-contain"
                   />
                 )}
@@ -462,7 +462,7 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
       if (filter === "all" || !progress) return true
       const st = progress.byAsset[a.code]
       if (filter === "pending") return st.state === "pending"
-      return st.state === "reported" || progress.flagged.includes(a.code) || a.condition !== "Baik"
+      return st.state === "reported" || progress.flagged.includes(a.code) || a.condition !== "Good"
     })
 
   const groups = Object.entries(
@@ -480,7 +480,7 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Cari nama atau kode barang"
+            placeholder="Search item name or code"
             className="pl-10"
             type="search"
           />
@@ -489,9 +489,9 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
           <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
             {(
               [
-                ["all", "Semua"],
-                ["pending", `Belum scan · ${progress!.pending.length}`],
-                ["issue", "Perlu perhatian"],
+                ["all", "All"],
+                ["pending", `Not scanned · ${progress!.pending.length}`],
+                ["issue", "Needs attention"],
               ] as const
             ).map(([v, label]) => (
               <button
@@ -513,8 +513,8 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
       {groups.length === 0 && (
         <EmptyState
           icon={PackageSearch}
-          title={s ? `Tidak ada barang “${q}”` : "Tidak ada barang di filter ini"}
-          body={s ? "Cek ejaan atau cari pakai kode di label." : undefined}
+          title={s ? `No items match “${q}”` : "No items in this filter"}
+          body={s ? "Check the spelling or search by the code on the label." : undefined}
         />
       )}
 
@@ -529,7 +529,7 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
               return (
                 <li key={a.code}>
                   <Link
-                    to={`/event/${event.id}/barang/${a.code}`}
+                    to={`/event/${event.id}/items/${a.code}`}
                     className="flex items-center gap-3 px-4 py-3 active:bg-muted"
                   >
                     <CategoryIcon category={a.category} />
@@ -540,7 +540,7 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
                       </p>
                     </div>
                     {scanPhase && st && <ScanState state={st} flagged={progress!.flagged.includes(a.code)} />}
-                    {!scanPhase && a.condition !== "Baik" && <Badge variant="warning">{a.condition}</Badge>}
+                    {!scanPhase && a.condition !== "Good" && <Badge variant="warning">{a.condition}</Badge>}
                   </Link>
                 </li>
               )
@@ -580,7 +580,7 @@ function TeamTab({ event }: { event: WeddingEvent }) {
 
   return (
     <div className="pb-6">
-      <SectionLabel>Crew internal · {internal.length}</SectionLabel>
+      <SectionLabel>In-house crew · {internal.length}</SectionLabel>
       <div className="list-card">
         {internal.map((c) => (
           <PersonRow
@@ -610,8 +610,8 @@ function TeamTab({ event }: { event: WeddingEvent }) {
         </>
       )}
       <p className="px-5 pt-4 text-xs text-muted-foreground">
-        Call time semua crew <span className="font-semibold text-foreground tabular">{event.callTime}</span> di
-        gudang.
+        All crew call time <span className="font-semibold text-foreground tabular">{event.callTime}</span> at
+        the warehouse.
       </p>
     </div>
   )

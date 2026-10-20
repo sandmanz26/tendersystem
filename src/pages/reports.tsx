@@ -10,34 +10,34 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import type { ReportStatus } from "@/data/types"
 import { useAppStore } from "@/store/app-store"
 
-type Filter = "Semua" | ReportStatus | "Saya"
-const FILTERS: Filter[] = ["Semua", "Terbuka", "Diproses", "Selesai", "Saya"]
+type Filter = "All" | ReportStatus | "Mine"
+const FILTERS: Filter[] = ["All", "Open", "In progress", "Resolved", "Mine"]
 
 export function ReportsPage() {
   const { reports, events, userId } = useAppStore()
-  const [filter, setFilter] = React.useState<Filter>("Semua")
+  const [filter, setFilter] = React.useState<Filter>("All")
 
   const myEventIds = new Set(events.filter((e) => e.crew.some((c) => c.personId === userId)).map((e) => e.id))
   const visible = reports
     .filter((r) => myEventIds.has(r.eventId))
-    .filter((r) => (filter === "Semua" ? true : filter === "Saya" ? r.by === userId : r.status === filter))
+    .filter((r) => (filter === "All" ? true : filter === "Mine" ? r.by === userId : r.status === filter))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
   const count = (f: Filter) =>
-    reports.filter((r) => myEventIds.has(r.eventId) && (f === "Saya" ? r.by === userId : r.status === f)).length
+    reports.filter((r) => myEventIds.has(r.eventId) && (f === "Mine" ? r.by === userId : r.status === f)).length
 
   return (
     <div>
       <TopBar
         large
         back={false}
-        title="Laporan"
-        subtitle="Masalah lapangan & barang rusak"
+        title="Reports"
+        subtitle="Field issues & damaged items"
         right={
           <Button asChild size="sm">
-            <Link to="/lapor">
+            <Link to="/new-report">
               <Plus />
-              Lapor
+              Report
             </Link>
           </Button>
         }
@@ -52,14 +52,14 @@ export function ReportsPage() {
           {FILTERS.map((f) => (
             <ToggleGroupItem key={f} value={f} className="shrink-0">
               {f}
-              {f !== "Semua" && <span className="tabular opacity-60">{count(f)}</span>}
+              {f !== "All" && <span className="tabular opacity-60">{count(f)}</span>}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
       </div>
 
       {visible.length === 0 ? (
-        <EmptyState icon={ClipboardList} title="Tidak ada laporan" body="Coba filter lain." />
+        <EmptyState icon={ClipboardList} title="No reports" body="Try another filter." />
       ) : (
         <div className="list-card">
           {visible.map((r) => (

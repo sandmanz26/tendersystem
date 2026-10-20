@@ -11,11 +11,11 @@ export function NotFound() {
       <TopBar back="/" />
       <EmptyState
         icon={SearchX}
-        title="Halaman tidak ditemukan"
-        body="Data mungkin sudah dihapus atau tautannya salah."
+        title="Page not found"
+        body="It may have been removed, or the link is wrong."
         action={
           <Button asChild variant="outline">
-            <Link to="/">Ke daftar event</Link>
+            <Link to="/">Go to events</Link>
           </Button>
         }
       />

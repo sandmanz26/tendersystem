@@ -48,9 +48,9 @@ import { isClosed } from "@/lib/progress"
 import { cn } from "@/lib/utils"
 import { useAppStore } from "@/store/app-store"
 
-const ISSUE_CATEGORIES = ["Venue", "Vendor", "Transport", "Klien", "Crew", "Keamanan", "Lainnya"]
-const DAMAGE_TYPES = ["Rusak ringan", "Rusak berat", "Hilang", "Jumlah kurang"]
-const SEVERITIES: Severity[] = ["Rendah", "Sedang", "Tinggi"]
+const ISSUE_CATEGORIES = ["Venue", "Vendor", "Transport", "Client", "Crew", "Security", "Other"]
+const DAMAGE_TYPES = ["Minor damage", "Major damage", "Missing", "Short count"]
+const SEVERITIES: Severity[] = ["Low", "Medium", "High"]
 const MAX_PHOTOS = 4
 const MAX_PHOTO_MB = 15
 const DESC_MIN = 10
@@ -74,7 +74,7 @@ export function ReportNewPage() {
     initialEvent?.assetCodes.includes(initialAsset) ? initialAsset : ""
   )
   const [category, setCategory] = React.useState("")
-  const [severity, setSeverity] = React.useState<Severity>("Sedang")
+  const [severity, setSeverity] = React.useState<Severity>("Medium")
   const [title, setTitle] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [photos, setPhotos] = React.useState<string[]>([])
@@ -107,7 +107,7 @@ export function ReportNewPage() {
             r.eventId === event.id &&
             r.assetCode === asset.code &&
             r.phase === phaseKey &&
-            r.status !== "Selesai"
+            r.status !== "Resolved"
         )
       : undefined
 
@@ -128,7 +128,7 @@ export function ReportNewPage() {
     if (submitting || processing) return
     setSubmitted(true)
     if (!valid) {
-      toast.error("Lengkapi dulu bagian yang ditandai merah")
+      toast.error("Fill in the fields marked in red first")
       return
     }
     setSubmitting(true)
@@ -143,23 +143,23 @@ export function ReportNewPage() {
       photos,
     })
     toast.success(
-      online ? `Laporan ${report.id} terkirim ke koordinator` : `Laporan ${report.id} disimpan, dikirim saat online`
+      online ? `Report ${report.id} sent to the coordinator` : `Report ${report.id} saved, will send when online`
     )
-    navigate(`/laporan/${report.id}`, { replace: true })
+    navigate(`/reports/${report.id}`, { replace: true })
   }
 
   const addPhotos = async (files: FileList | null) => {
     if (!files?.length) return
     const room = MAX_PHOTOS - photos.length
     const list = Array.from(files)
-    if (list.length > room) toast(`Maksimal ${MAX_PHOTOS} foto. ${list.length - room} foto tidak ditambahkan.`)
+    if (list.length > room) toast(`Up to ${MAX_PHOTOS} photos. ${list.length - room} photo(s) not added.`)
     const accepted = list.slice(0, room).filter((f) => {
       if (!f.type.startsWith("image/")) {
-        toast.error(`${f.name} bukan file gambar`)
+        toast.error(`${f.name} is not an image`)
         return false
       }
       if (f.size > MAX_PHOTO_MB * 1024 * 1024) {
-        toast.error(`${f.name} lebih dari ${MAX_PHOTO_MB} MB`)
+        toast.error(`${f.name} is larger than ${MAX_PHOTO_MB} MB`)
         return false
       }
       return true
@@ -169,28 +169,28 @@ export function ReportNewPage() {
     const out = await Promise.all(accepted.map(compressImage))
     setProcessing(false)
     const ok = out.filter((x): x is string => !!x)
-    if (ok.length < accepted.length) toast.error("Sebagian foto gagal dibaca. Coba ambil ulang.")
+    if (ok.length < accepted.length) toast.error("Some photos couldn't be read. Try taking them again.")
     setPhotos((p) => [...p, ...ok].slice(0, MAX_PHOTOS))
   }
 
   return (
     <form onSubmit={submit} className="flex min-h-dvh flex-col" noValidate>
       <TopBar
-        title="Buat laporan"
-        subtitle="Diteruskan ke koordinator lapangan"
+        title="New report"
+        subtitle="Goes to the field coordinator"
         onBack={(go) => (dirty ? setLeave(() => go) : go())}
       />
 
       <div className="flex-1 space-y-6 px-4 pt-3 pb-32">
         {!online && (
-          <Callout icon={CloudOff}>Kamu sedang offline. Laporan disimpan di HP dan terkirim otomatis saat sinyal kembali.</Callout>
+          <Callout icon={CloudOff}>You're offline. The report is saved on this phone and sent automatically when signal returns.</Callout>
         )}
 
         <div className="grid grid-cols-2 gap-2">
           {(
             [
-              ["issue", "Masalah lapangan", "Venue, vendor, transport", TriangleAlert],
-              ["damage", "Barang rusak", "Rusak, hilang, kurang", PackageX],
+              ["issue", "Field issue", "Venue, vendor, transport", TriangleAlert],
+              ["damage", "Damaged item", "Damaged, missing, short", PackageX],
             ] as const
           ).map(([value, label, hint, Icon]) => (
             <button
@@ -222,7 +222,7 @@ export function ReportNewPage() {
           ))}
         </div>
 
-        <Field label="Event" error={err("event") && "Pilih event"}>
+        <Field label="Event" error={err("event") && "Pick an event"}>
           <PickerButton onClick={() => setPicker("event")} invalid={err("event")}>
             {event ? (
               <span className="min-w-0">
@@ -233,20 +233,20 @@ export function ReportNewPage() {
               </span>
             ) : (
               <span className="text-muted-foreground">
-                {mine.length ? "Pilih event" : "Kamu belum ditugaskan di event apa pun"}
+                {mine.length ? "Pick an event" : "You aren't assigned to any event yet"}
               </span>
             )}
           </PickerButton>
           {event && isClosed(event) && (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Info className="size-3.5" />
-              Event sudah ditutup. Laporan tetap dicatat untuk riwayat.
+              This event is closed. The report is still kept on record.
             </p>
           )}
         </Field>
 
         {kind === "damage" && (
-          <Field label="Barang" error={err("asset") && "Pilih barang yang bermasalah"}>
+          <Field label="Item" error={err("asset") && "Pick the affected item"}>
             <PickerButton onClick={() => setPicker("asset")} disabled={!event} invalid={err("asset")}>
               {asset ? (
                 <span className="flex min-w-0 items-center gap-3">
@@ -258,23 +258,23 @@ export function ReportNewPage() {
                 </span>
               ) : (
                 <span className="text-muted-foreground">
-                  {event ? "Pilih dari daftar barang event" : "Pilih event dulu"}
+                  {event ? "Pick from this event's items" : "Pick an event first"}
                 </span>
               )}
             </PickerButton>
             {existing && (
               <Callout icon={Info} tone="info">
-                Barang ini sudah dilaporkan di fase ini ({existing.id}, {existing.status.toLowerCase()}).{" "}
-                <Link to={`/laporan/${existing.id}`} className="font-semibold underline underline-offset-2">
-                  Tambah update di sana
+                This item was already reported in this phase ({existing.id}, {existing.status.toLowerCase()}).{" "}
+                <Link to={`/reports/${existing.id}`} className="font-semibold underline underline-offset-2">
+                  Add an update there
                 </Link>{" "}
-                kalau masalahnya sama.
+                if it's the same problem.
               </Callout>
             )}
           </Field>
         )}
 
-        <Field label={kind === "damage" ? "Kondisi" : "Kategori"} error={err("category") && "Pilih salah satu"}>
+        <Field label={kind === "damage" ? "Condition" : "Category"} error={err("category") && "Pick one"}>
           <ToggleGroup type="single" value={category} onValueChange={(v) => v && setCategory(v)}>
             {(kind === "damage" ? DAMAGE_TYPES : ISSUE_CATEGORIES).map((c) => (
               <ToggleGroupItem key={c} value={c}>
@@ -284,7 +284,7 @@ export function ReportNewPage() {
           </ToggleGroup>
         </Field>
 
-        <Field label="Urgensi">
+        <Field label="Urgency">
           <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
             {SEVERITIES.map((s) => (
               <button
@@ -300,57 +300,57 @@ export function ReportNewPage() {
                 <span
                   className={cn(
                     "size-2 rounded-full",
-                    s === "Rendah" && "bg-muted-foreground/40",
-                    s === "Sedang" && "bg-warning",
-                    s === "Tinggi" && "bg-destructive"
+                    s === "Low" && "bg-muted-foreground/40",
+                    s === "Medium" && "bg-warning",
+                    s === "High" && "bg-destructive"
                   )}
                 />
                 {s}
               </button>
             ))}
           </div>
-          {severity === "Tinggi" && lead && (
+          {severity === "High" && lead && (
             <Callout icon={Phone} tone="danger">
-              Urgensi tinggi: setelah kirim, langsung telepon{" "}
+              High urgency: after sending, call{" "}
               <a href={`tel:${lead.phone}`} className="font-semibold underline underline-offset-2">
                 {lead.name}
-              </a>
-              .
+              </a>{" "}
+              right away.
             </Callout>
           )}
         </Field>
 
-        <Field label="Judul singkat" error={err("title") && "Isi judul"}>
+        <Field label="Short title" error={err("title") && "Add a title"}>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder={autoTitle || "Mis. Listrik panggung mati"}
+            placeholder={autoTitle || "e.g. Stage power is out"}
             maxLength={80}
             aria-invalid={err("title") || undefined}
           />
         </Field>
 
         <Field
-          label="Apa yang terjadi?"
-          error={err("description") && `Ceritakan singkat (min. ${DESC_MIN} karakter)`}
+          label="What happened?"
+          error={err("description") && `Describe it briefly (min. ${DESC_MIN} characters)`}
           hint={`${desc.length}/${DESC_MAX}`}
         >
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value.slice(0, DESC_MAX))}
-            placeholder="Lokasi, kronologi, dan apa yang sudah kamu lakukan."
+            placeholder="Where, what happened, and what you've done so far."
             aria-invalid={err("description") || undefined}
           />
         </Field>
 
-        <Field label={`Foto (${photos.length}/${MAX_PHOTOS})`}>
+        <Field label={`Photos (${photos.length}/${MAX_PHOTOS})`}>
           <div className="grid grid-cols-4 gap-2">
             {photos.map((src, i) => (
               <div key={i} className="relative aspect-square overflow-hidden rounded-xl shadow-soft">
-                <img src={src} alt={`Foto ${i + 1}`} className="size-full object-cover" />
+                <img src={src} alt={`Photo ${i + 1}`} className="size-full object-cover" />
                 <button
                   type="button"
-                  aria-label={`Hapus foto ${i + 1}`}
+                  aria-label={`Remove photo ${i + 1}`}
                   onClick={() => setPhotos((p) => p.filter((_, j) => j !== i))}
                   className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-white"
                 >
@@ -365,13 +365,13 @@ export function ReportNewPage() {
             )}
             {!processing && photos.length < MAX_PHOTOS && (
               <>
-                <PhotoInput capture icon={Camera} label="Kamera" onFiles={addPhotos} />
-                {photos.length < MAX_PHOTOS - 1 && <PhotoInput icon={ImagePlus} label="Galeri" onFiles={addPhotos} />}
+                <PhotoInput capture icon={Camera} label="Camera" onFiles={addPhotos} />
+                {photos.length < MAX_PHOTOS - 1 && <PhotoInput icon={ImagePlus} label="Gallery" onFiles={addPhotos} />}
               </>
             )}
           </div>
           {kind === "damage" && photos.length === 0 && (
-            <p className="text-xs text-muted-foreground">Foto sangat membantu tim gudang menilai kerusakan.</p>
+            <p className="text-xs text-muted-foreground">Photos help the warehouse team assess the damage.</p>
           )}
         </Field>
       </div>
@@ -379,15 +379,15 @@ export function ReportNewPage() {
       <div className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[440px] bg-gradient-to-t from-background via-background to-transparent px-4 pt-6 pb-[max(env(safe-area-inset-bottom),14px)]">
         <Button type="submit" size="lg" className="w-full" disabled={submitting || processing}>
           {submitting ? <Loader2 className="animate-spin" /> : null}
-          {online ? "Kirim laporan" : "Simpan laporan"}
+          {online ? "Send report" : "Save report"}
         </Button>
       </div>
 
       <Drawer open={picker === "event"} onOpenChange={(o) => !o && setPicker(null)}>
         <DrawerContent>
           <DrawerHeader>
-            <DrawerTitle>Pilih event</DrawerTitle>
-            <DrawerDescription>Event yang kamu ikuti</DrawerDescription>
+            <DrawerTitle>Pick an event</DrawerTitle>
+            <DrawerDescription>Events you're assigned to</DrawerDescription>
           </DrawerHeader>
           <ul className="overflow-y-auto px-2 pb-2">
             {mine.map((e) => (
@@ -405,7 +405,7 @@ export function ReportNewPage() {
                     <span className="block truncate font-semibold">{e.couple}</span>
                     <span className="block truncate text-xs text-muted-foreground">
                       {relativeDay(e.date)} · {e.venue.name}
-                      {isClosed(e) && " · selesai"}
+                      {isClosed(e) && " · done"}
                     </span>
                   </span>
                   {e.id === eventId && <Check className="size-4 text-brand" />}
@@ -430,12 +430,12 @@ export function ReportNewPage() {
       <Dialog open={!!leave} onOpenChange={(o) => !o && setLeave(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Buang laporan ini?</DialogTitle>
-            <DialogDescription>Isian dan foto yang belum dikirim akan hilang.</DialogDescription>
+            <DialogTitle>Discard this report?</DialogTitle>
+            <DialogDescription>Unsent text and photos will be lost.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="secondary">Lanjut menulis</Button>
+              <Button variant="secondary">Keep writing</Button>
             </DialogClose>
             <Button
               variant="destructive"
@@ -445,7 +445,7 @@ export function ReportNewPage() {
                 go?.()
               }}
             >
-              Buang
+              Discard
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -550,15 +550,15 @@ function AssetPicker({
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
       <DrawerContent className="h-[80dvh]">
         <DrawerHeader>
-          <DrawerTitle>Pilih barang</DrawerTitle>
+          <DrawerTitle>Pick an item</DrawerTitle>
         </DrawerHeader>
         <div className="relative px-4 pb-2">
           <Search className="pointer-events-none absolute top-1/2 left-7.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama atau kode" className="pl-10" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or code" className="pl-10" />
         </div>
         <ul className="flex-1 overflow-y-auto px-2">
           {assets.length === 0 && (
-            <li className="py-8 text-center text-sm text-muted-foreground">Tidak ada barang “{q}”</li>
+            <li className="py-8 text-center text-sm text-muted-foreground">No items match “{q}”</li>
           )}
           {assets.map((a) => (
             <li key={a.code}>

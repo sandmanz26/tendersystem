@@ -39,7 +39,7 @@ export function PersonRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-sm font-medium">{person.name}</span>
-          {isYou && <span className="text-xs text-muted-foreground">(kamu)</span>}
+          {isYou && <span className="text-xs text-muted-foreground">(you)</span>}
           {badge}
         </div>
         <div className="truncate text-[13px] text-muted-foreground">
@@ -54,7 +54,7 @@ export function PersonRow({
               <MessageCircle className="text-brand" />
             </a>
           </Button>
-          <Button asChild variant="secondary" size="icon-sm" aria-label={`Telepon ${person.name}`}>
+          <Button asChild variant="secondary" size="icon-sm" aria-label={`Call ${person.name}`}>
             <a href={`tel:${person.phone}`}>
               <Phone />
             </a>

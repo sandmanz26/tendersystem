@@ -14,21 +14,21 @@ export interface Phase {
 
 export type AssetCategory =
   | "Furniture"
-  | "Dekorasi"
+  | "Decor"
   | "Lighting"
   | "Sound"
   | "Linen"
   | "Tableware"
-  | "Bunga & Props"
+  | "Flowers & Props"
 
-export type AssetCondition = "Baik" | "Perlu cek" | "Rusak"
+export type AssetCondition = "Good" | "Needs check" | "Damaged"
 
 export interface Asset {
   /** Printed on the QR label, e.g. KRS-TFG-01 */
   code: string
   name: string
   category: AssetCategory
-  /** What one scan represents, e.g. "1 palet · 40 kursi" */
+  /** What one scan represents, e.g. "1 pallet · 40 chairs" */
   unit: string
   location: string
   condition: AssetCondition
@@ -96,8 +96,8 @@ export interface ScanRecord {
 export type ScanBook = Record<string, Partial<Record<PhaseKey, Record<string, ScanRecord>>>>
 
 export type ReportKind = "issue" | "damage"
-export type ReportStatus = "Terbuka" | "Diproses" | "Selesai"
-export type Severity = "Rendah" | "Sedang" | "Tinggi"
+export type ReportStatus = "Open" | "In progress" | "Resolved"
+export type Severity = "Low" | "Medium" | "High"
 
 export interface ReportUpdate {
   at: string
@@ -109,7 +109,7 @@ export interface Report {
   id: string
   eventId: string
   kind: ReportKind
-  /** Issue category, or damage type (Rusak ringan / Rusak berat / Hilang) */
+  /** Issue category, or damage type (Minor damage / Major damage / Missing) */
   category: string
   assetCode?: string
   /** Phase the report was filed in; a damage report clears that asset for the phase gate. */

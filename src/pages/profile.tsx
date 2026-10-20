@@ -37,7 +37,7 @@ export function ProfilePage() {
 
   return (
     <div>
-      <TopBar large back={false} title="Profil" />
+      <TopBar large back={false} title="Profile" />
 
       <section className="mx-4 rounded-3xl bg-card p-5 shadow-soft">
         <div className="flex items-center gap-4">
@@ -49,9 +49,9 @@ export function ProfilePage() {
         </div>
         <div className="mt-5 grid grid-cols-3 gap-2 text-center">
           {[
-            [mine.length, "Event"],
-            [scanCount, "Scan"],
-            [myReports, "Laporan"],
+            [mine.length, "Events"],
+            [scanCount, "Scans"],
+            [myReports, "Reports"],
           ].map(([v, l]) => (
             <div key={l} className="rounded-2xl bg-secondary py-3">
               <div className="text-xl font-bold tabular">{v}</div>
@@ -61,7 +61,7 @@ export function ProfilePage() {
         </div>
       </section>
 
-      <SectionLabel>Sinkronisasi</SectionLabel>
+      <SectionLabel>Sync</SectionLabel>
       <div className="list-card">
         <div className="flex items-center gap-3 px-4 py-3.5">
           <span
@@ -75,31 +75,31 @@ export function ProfilePage() {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">{online ? "Online" : "Offline"}</p>
             <p className="text-xs text-muted-foreground">
-              {pendingSync > 0 ? `${pendingSync} data menunggu dikirim` : `Tersinkron ${stamp(lastSyncAt)}`}
+              {pendingSync > 0 ? `${pendingSync} items waiting to send` : `Synced ${stamp(lastSyncAt)}`}
             </p>
           </div>
         </div>
         <label className="flex cursor-pointer items-center gap-3 px-4 py-3.5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">Simulasi tanpa sinyal</p>
+            <p className="text-sm font-semibold">Simulate no signal</p>
             <p className="text-xs text-muted-foreground">
-              Coba scan & lapor seperti di venue tanpa sinyal. Data dikirim saat dimatikan.
+              Try scanning & reporting as if at a venue with no signal. Data is sent when you turn this off.
             </p>
           </div>
           <Switch checked={forceOffline} onChange={setForceOffline} />
         </label>
       </div>
 
-      <SectionLabel>Akun</SectionLabel>
+      <SectionLabel>Account</SectionLabel>
       <div className="list-card">
-        <InfoRow label="ID crew">KRU-{userId.toUpperCase()}</InfoRow>
-        <InfoRow label="Telepon">{me.phone}</InfoRow>
-        <InfoRow label="Tim">Logistik & Gudang</InfoRow>
+        <InfoRow label="Crew ID">KRU-{userId.toUpperCase()}</InfoRow>
+        <InfoRow label="Phone">{me.phone}</InfoRow>
+        <InfoRow label="Team">Logistics & Warehouse</InfoRow>
       </div>
 
       {closed.length > 0 && (
         <>
-          <SectionLabel>Riwayat event</SectionLabel>
+          <SectionLabel>Past events</SectionLabel>
           <ul className="list-card">
             {closed.map((e) => (
               <li key={e.id}>
@@ -122,19 +122,19 @@ export function ProfilePage() {
       <div className="space-y-2 px-4">
         <Button variant="outline" className="w-full" onClick={() => setConfirmReset(true)}>
           <RotateCcw />
-          Reset data demo
+          Reset demo data
         </Button>
         <Button
           variant="ghost"
           className="w-full text-muted-foreground"
           onClick={() =>
             pendingSync > 0
-              ? toast.error(`Masih ada ${pendingSync} data belum terkirim. Tunggu online dulu sebelum keluar.`)
-              : toast("Ini mode demo, tidak ada akun untuk keluar.")
+              ? toast.error(`${pendingSync} items haven't been sent yet. Wait until you're online before signing out.`)
+              : toast("This is a demo, there's no account to sign out of.")
           }
         >
           <LogOut />
-          Keluar
+          Sign out
         </Button>
       </div>
       <p className="px-4 pt-6 pb-4 text-center text-[11px] text-muted-foreground">Kru · v0.2 demo</p>
@@ -142,22 +142,22 @@ export function ProfilePage() {
       <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset data demo?</DialogTitle>
+            <DialogTitle>Reset demo data?</DialogTitle>
             <DialogDescription>
-              Semua scan, laporan, dan tanda tangan yang kamu buat akan hilang dan kembali ke data awal.
-              {pendingSync > 0 && ` ${pendingSync} data belum terkirim juga ikut terhapus.`}
+              All scans, reports, and signatures you made will be lost and the original data restored.
+              {pendingSync > 0 && ` ${pendingSync} unsent items will be deleted too.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="secondary">Batal</Button>
+              <Button variant="secondary">Cancel</Button>
             </DialogClose>
             <Button
               variant="destructive"
               onClick={() => {
                 reset()
                 setConfirmReset(false)
-                toast.success("Data demo dikembalikan")
+                toast.success("Demo data restored")
               }}
             >
               Reset

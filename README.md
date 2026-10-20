@@ -1,6 +1,6 @@
-# Kru: aplikasi crew lapangan (Wedding Organizer)
+# Kru: field crew app for wedding organizers
 
-Mobile web untuk pekerja lapangan WO. Front-end saja: React + Vite + Tailwind v4 + shadcn/ui, dengan mock data (tersimpan di `localStorage`, bisa di-reset dari halaman Profil).
+A mobile web app for wedding-organizer field crews. Front-end only: React + Vite + Tailwind v4 + shadcn/ui, with mock data saved in `localStorage` (reset it from the Profile page).
 
 ```bash
 npm install
@@ -8,46 +8,46 @@ npm run dev     # http://localhost:5173
 npm run build
 ```
 
-## Fitur
+## Features
 
-| Kebutuhan | Di mana |
+| Need | Where |
 |---|---|
-| Banyak event dalam 1 app | Beranda: *Sedang berjalan*, *Mendatang*, *Selesai* |
-| Info event | Detail event, tab **Info**: lokasi & catatan loading, rundown, catatan crew, kontak penting |
-| Scan barang per fase | Detail event → **Mulai scan**, atau tab **Scan** |
-| Info barang | Tab **Barang** (inventaris global) atau tab Barang di event → lokasi saat ini, kondisi, jejak scan, jadwal pemakaian, riwayat laporan |
-| Lapor masalah | **Laporan → Lapor**, atau dari event |
-| Lapor barang rusak/hilang | Dari scanner (tombol *Lapor*), detail barang, atau form laporan |
-| Siapa saja yang terlibat | Tab **Tim**: crew internal (lead ditandai) + vendor, tombol WA/telepon |
+| Many events in one app | Home: *Live*, *Upcoming*, *Done* |
+| Event info | Event page, **Info** tab: location & loading notes, rundown, crew notes, key contacts, phase history |
+| Item scanning per phase | Event page → **Start scan**, or the centre **Scan** button |
+| Item info | **Items** tab (global inventory) or the event's Items tab → current location, condition, scan trail, bookings, report history |
+| Report an issue | **Reports → Report**, or from an event |
+| Report damaged/missing items | From the scanner (*Report* button), the item page, or the report form |
+| Who's involved | **Team** tab: in-house crew (lead marked) + vendors, with WhatsApp/call buttons |
 
-## Riset & negative case
+## Research & negative cases
 
-Lihat [`docs/riset-dan-negative-case.md`](docs/riset-dan-negative-case.md): temuan riset, fitur v0.2, dan matriks negative case.
+See [`docs/research-and-negative-cases.md`](docs/research-and-negative-cases.md) for the research findings, what v0.2 added, and the full negative-case matrix.
 
-## Alur fase & gate scan
+## Phases & scan gate
 
-`Muat di Gudang → Tiba di Venue → Setup & Dekor → Acara → Bongkar & Muat → Kembali di Gudang`
+`Warehouse Load-out → Venue Arrival → Setup & Decor → Event Live → Teardown & Load → Warehouse Return`
 
-Fase Setup & Acara punya **checklist** yang harus lengkap. Muat di Gudang & Kembali di Gudang butuh **tanda tangan admin gudang**. Mode offline bisa dicoba dari Profil → *Simulasi tanpa sinyal*.
+Setup & Event Live each have a **checklist** that must be complete. Load-out and Return need a **warehouse admin signature**. Offline mode can be tried from Profile → *Simulate no signal*.
 
-Fase bertanda scan (Muat, Tiba, Bongkar, Gudang) **tidak bisa dilanjutkan** sampai setiap barang di manifest event discan. Barang yang rusak/hilang bisa *dilaporkan* dari scanner. Laporan itu menggantikan scan untuk fase tersebut, jadi satu barang bermasalah tidak menahan seluruh tim, tapi tetap tercatat.
+Scan phases (Load-out, Arrival, Teardown, Return) **can't be completed** until every item on the event's manifest is scanned. Damaged or missing items can be *reported* from the scanner. That report stands in for the scan in that phase, so one broken crate doesn't hold up the whole crew, but it stays on record.
 
-Scanner mendukung:
-- **Kamera** via `BarcodeDetector` (Chrome Android). Tombol nonaktif di browser yang tidak mendukung.
-- **Ketik kode** dari label (mis. `KRS-TFG-01`).
-- **Scan demo**: memilih acak barang yang belum discan, untuk presentasi.
+The scanner supports:
+- **Camera** via `BarcodeDetector` (Chrome on Android). The button is disabled on unsupported browsers.
+- **Typing the code** from the label (e.g. `KRS-TFG-01`).
+- **Scan demo**: picks a random unscanned item, for presentations.
 
-Hasil scan dibedakan: berhasil, sudah discan (duplikat), dan kode tidak terdaftar di event (salah muat).
+Every scan outcome is handled: success, duplicate, wrong format, unknown code, item booked for another event, item still out at another event, and skipped checkpoint.
 
-## Struktur
+## Structure
 
 ```
 src/
-  data/        types, fase, mock data (tanggal relatif ke hari ini)
-  store/       context + localStorage
-  lib/         logika progress fase, format tanggal, lookup
-  components/  ui/ (shadcn), shell, phase track, rows
-  pages/       home, event-detail, scan, item-detail, report-*, profile
+  data/        types, phases, mock data (dates relative to today)
+  store/       context + localStorage + offline queue
+  lib/         phase progress, whereabouts, rundown, date formatting
+  components/  ui/ (shadcn), shell, phase track, rows, sheets
+  pages/       home, event-detail, scan, inventory, item-detail, report-*, profile
 ```
 
-Komponen shadcn ada di `src/components/ui` (ditulis manual karena registry shadcn tidak bisa diakses dari environment build. API-nya sama, `components.json` sudah disiapkan untuk `npx shadcn add` berikutnya).
+The shadcn components in `src/components/ui` were written by hand because the shadcn registry wasn't reachable from the build environment. The API is the same, and `components.json` is set up for future `npx shadcn add`.

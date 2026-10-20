@@ -31,7 +31,7 @@ export function ReportDetailPage() {
   const author = getPerson(report.by)!
 
   const thread = [
-    { at: report.createdAt, by: report.by, text: "Membuat laporan" },
+    { at: report.createdAt, by: report.by, text: "Created the report" },
     ...report.updates,
   ]
 
@@ -44,13 +44,13 @@ export function ReportDetailPage() {
           <Badge variant={STATUS_VARIANT[report.status]}>{report.status}</Badge>
           <Badge variant="outline">
             <span className={cn("size-1.5 rounded-full", SEVERITY_DOT[report.severity])} />
-            Urgensi {report.severity.toLowerCase()}
+            {report.severity} urgency
           </Badge>
-          <Badge variant="secondary">{report.kind === "damage" ? "Barang rusak" : "Masalah lapangan"}</Badge>
+          <Badge variant="secondary">{report.kind === "damage" ? "Damaged item" : "Field issue"}</Badge>
           {report.synced === false && (
             <Badge variant="warning">
               <CloudOff />
-              Menunggu sinyal
+              Waiting for signal
             </Badge>
           )}
         </div>
@@ -66,7 +66,7 @@ export function ReportDetailPage() {
                 onClick={() => setPreview(src)}
                 className="aspect-square overflow-hidden rounded-xl"
               >
-                <img src={src} alt={`Foto ${i + 1}`} className="size-full object-cover" />
+                <img src={src} alt={`Photo ${i + 1}`} className="size-full object-cover" />
               </button>
             ))}
           </div>
@@ -75,9 +75,9 @@ export function ReportDetailPage() {
 
       {asset && (
         <>
-          <SectionLabel>Barang</SectionLabel>
+          <SectionLabel>Item</SectionLabel>
           <Link
-            to={`/event/${event.id}/barang/${asset.code}`}
+            to={`/event/${event.id}/items/${asset.code}`}
             className="list-card flex items-center gap-3 px-4 py-3 active:bg-muted"
           >
             <CategoryIcon category={asset.category} />
@@ -92,20 +92,20 @@ export function ReportDetailPage() {
         </>
       )}
 
-      <SectionLabel>Detail</SectionLabel>
+      <SectionLabel>Details</SectionLabel>
       <div className="list-card">
-        <InfoRow label={report.kind === "damage" ? "Kondisi" : "Kategori"}>{report.category}</InfoRow>
+        <InfoRow label={report.kind === "damage" ? "Condition" : "Category"}>{report.category}</InfoRow>
         <InfoRow label="Event">
-          <Link to={`/event/${event.id}?tab=laporan`} className="underline underline-offset-4">
+          <Link to={`/event/${event.id}?tab=reports`} className="underline underline-offset-4">
             {event.couple}
           </Link>
         </InfoRow>
-        <InfoRow label="Fase">{PHASES.find((p) => p.key === report.phase)?.label}</InfoRow>
-        <InfoRow label="Pelapor">{author.name}</InfoRow>
-        <InfoRow label="Waktu">{stamp(report.createdAt)}</InfoRow>
+        <InfoRow label="Phase">{PHASES.find((p) => p.key === report.phase)?.label}</InfoRow>
+        <InfoRow label="Reported by">{author.name}</InfoRow>
+        <InfoRow label="Time">{stamp(report.createdAt)}</InfoRow>
       </div>
 
-      <SectionLabel>Aktivitas</SectionLabel>
+      <SectionLabel>Activity</SectionLabel>
       <ol className="list-card px-4 py-1 [&>*+*]:!border-0">
         {thread.map((u, i) => {
           const person = getPerson(u.by)!
@@ -129,46 +129,46 @@ export function ReportDetailPage() {
         onSubmit={(e) => {
           e.preventDefault()
           if (!note.trim()) return
-          if (report.status === "Selesai") {
-            addReportUpdate(report.id, note.trim(), "Diproses")
+          if (report.status === "Resolved") {
+            addReportUpdate(report.id, note.trim(), "In progress")
             setNote("")
-            toast.success("Laporan dibuka lagi dengan update baru")
+            toast.success("Report reopened with your update")
             return
           }
           addReportUpdate(report.id, note.trim())
           setNote("")
-          toast.success("Update terkirim")
+          toast.success("Update sent")
         }}
       >
         <Textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder={
-            report.status === "Selesai"
-              ? "Masalah muncul lagi? Tulis update untuk membuka ulang"
-              : "Tambah update, mis. sudah ditangani / butuh bantuan"
+            report.status === "Resolved"
+              ? "Problem back? Write an update to reopen it"
+              : "Add an update, e.g. handled / need help"
           }
           maxLength={500}
           className="min-h-20"
         />
         <div className="mt-2 flex gap-2">
-          {report.status !== "Selesai" && (
+          {report.status !== "Resolved" && (
             <Button
               type="button"
               variant="outline"
               className="flex-1"
               onClick={() => {
-                addReportUpdate(report.id, note.trim() || "Ditandai selesai", "Selesai")
+                addReportUpdate(report.id, note.trim() || "Marked as resolved", "Resolved")
                 setNote("")
-                toast.success("Laporan ditandai selesai")
+                toast.success("Report marked as resolved")
               }}
             >
-              Tandai selesai
+              Mark resolved
             </Button>
           )}
           <Button type="submit" className="flex-1" disabled={!note.trim()}>
             <SendHorizontal />
-            Kirim update
+            Send update
           </Button>
         </div>
       </form>
@@ -176,7 +176,7 @@ export function ReportDetailPage() {
       {preview && (
         <button
           type="button"
-          aria-label="Tutup foto"
+          aria-label="Close photo"
           onClick={() => setPreview(null)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
         >

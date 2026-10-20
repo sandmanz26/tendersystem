@@ -26,7 +26,7 @@ import { getWhereabouts } from "@/lib/whereabouts"
 import { useAppStore } from "@/store/app-store"
 import { NotFound } from "./not-found"
 
-/** /barang/:code (inventory) and /event/:eventId/barang/:code (in an event). */
+/** /items/:code (inventory) and /event/:eventId/items/:code (in an event). */
 export function ItemDetailPage() {
   const { eventId, code } = useParams()
   const store = useAppStore()
@@ -41,11 +41,11 @@ export function ItemDetailPage() {
     .filter((e) => e.assetCodes.includes(asset.code) && !isClosed(e))
     .sort((a, b) => a.date.localeCompare(b.date))
   const conditionVariant =
-    asset.condition === "Baik" ? "success" : asset.condition === "Perlu cek" ? "warning" : "destructive"
+    asset.condition === "Good" ? "success" : asset.condition === "Needs check" ? "warning" : "destructive"
 
   return (
     <div>
-      <TopBar title={asset.name} subtitle={event ? event.couple : "Inventaris"} />
+      <TopBar title={asset.name} subtitle={event ? event.couple : "Inventory"} />
 
       <section className="px-4 pt-2">
         <div className="rounded-3xl bg-card p-5 shadow-soft">
@@ -73,10 +73,10 @@ export function ItemDetailPage() {
             )}
             <div className="min-w-0 text-[13px]">
               <p className="font-semibold">
-                {where.at === "warehouse" ? `Di gudang · ${asset.location}` : `Di event ${where.event.couple}`}
+                {where.at === "warehouse" ? `In warehouse · ${asset.location}` : `At ${where.event.couple}`}
               </p>
               {where.at === "event" && (
-                <p className="text-muted-foreground">Keluar gudang {stamp(where.since)}</p>
+                <p className="text-muted-foreground">Left warehouse {stamp(where.since)}</p>
               )}
             </div>
           </div>
@@ -89,19 +89,19 @@ export function ItemDetailPage() {
         )}
       </section>
 
-      <SectionLabel>Detail</SectionLabel>
+      <SectionLabel>Details</SectionLabel>
       <div className="list-card">
-        <InfoRow label="Isi per scan">{asset.unit}</InfoRow>
-        <InfoRow label="Lokasi gudang">{asset.location}</InfoRow>
-        {asset.dimensions && <InfoRow label="Dimensi">{asset.dimensions}</InfoRow>}
-        <InfoRow label="Terakhir dicek">
+        <InfoRow label="Per scan">{asset.unit}</InfoRow>
+        <InfoRow label="Warehouse spot">{asset.location}</InfoRow>
+        {asset.dimensions && <InfoRow label="Dimensions">{asset.dimensions}</InfoRow>}
+        <InfoRow label="Last checked">
           {formatDate(asset.lastChecked, { day: "numeric", month: "long", year: "numeric" })}
         </InfoRow>
       </div>
 
       {event && (
         <>
-          <SectionLabel>Jejak di {event.couple}</SectionLabel>
+          <SectionLabel>Trail at {event.couple}</SectionLabel>
           <ol className="list-card">
             {PHASES.filter((p) => p.requiresScan).map((p) => {
               const phaseIdx = PHASES.indexOf(p)
@@ -127,14 +127,14 @@ export function ItemDetailPage() {
                       <p className="flex items-center gap-1 text-xs text-muted-foreground">
                         {st.record.synced === false && <CloudOff className="size-3" />}
                         {stamp(st.record.at)} · {personName(st.record.by)}
-                        {st.record.skippedPrevious && " · lewat checkpoint"}
+                        {st.record.skippedPrevious && " · skipped checkpoint"}
                       </p>
                     )}
                     {st.state === "reported" && (
-                      <p className="text-xs text-clay">Dilaporkan: {st.report.category}</p>
+                      <p className="text-xs text-clay">Reported: {st.report.category}</p>
                     )}
                   </div>
-                  {isCurrent && st.state === "pending" && <Badge variant="outline">Menunggu scan</Badge>}
+                  {isCurrent && st.state === "pending" && <Badge variant="outline">Awaiting scan</Badge>}
                 </li>
               )
             })}
@@ -142,9 +142,9 @@ export function ItemDetailPage() {
         </>
       )}
 
-      <SectionLabel>Jadwal pemakaian · {bookings.length}</SectionLabel>
+      <SectionLabel>Bookings · {bookings.length}</SectionLabel>
       {bookings.length === 0 ? (
-        <p className="list-card px-4 py-4 text-[13px] text-muted-foreground">Belum dijadwalkan.</p>
+        <p className="list-card px-4 py-4 text-[13px] text-muted-foreground">Not booked yet.</p>
       ) : (
         <ul className="list-card">
           {bookings.map((e) => (
@@ -157,7 +157,7 @@ export function ItemDetailPage() {
                     {relativeDay(e.date)} · {PHASES[e.phaseIndex]?.label}
                   </span>
                 </span>
-                {e.id === event?.id && <Badge variant="secondary">Event ini</Badge>}
+                {e.id === event?.id && <Badge variant="secondary">This event</Badge>}
                 <ChevronRight className="size-4 text-muted-foreground/50" />
               </Link>
             </li>
@@ -165,10 +165,10 @@ export function ItemDetailPage() {
         </ul>
       )}
 
-      <SectionLabel>Riwayat laporan · {assetReports.length}</SectionLabel>
+      <SectionLabel>Report history · {assetReports.length}</SectionLabel>
       {assetReports.length === 0 ? (
         <p className="list-card px-4 py-4 text-[13px] text-muted-foreground">
-          Belum pernah dilaporkan rusak atau hilang.
+          Never reported damaged or missing.
         </p>
       ) : (
         <div className="list-card">
@@ -181,10 +181,10 @@ export function ItemDetailPage() {
       <div className="px-4 pt-6 pb-4">
         <Button asChild variant="outline" size="lg" className="w-full text-clay">
           <Link
-            to={`/lapor?type=damage&asset=${asset.code}${event ? `&event=${event.id}` : where.at === "event" ? `&event=${where.event.id}` : ""}`}
+            to={`/new-report?type=damage&asset=${asset.code}${event ? `&event=${event.id}` : where.at === "event" ? `&event=${where.event.id}` : ""}`}
           >
             <PackageX />
-            Laporkan rusak / hilang
+            Report damaged / missing
           </Link>
         </Button>
       </div>

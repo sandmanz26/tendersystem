@@ -31,10 +31,10 @@ export function SyncStatus({ className, dark }: { className?: string; dark?: boo
         <CloudOff className="size-3.5" />
       )}
       {online
-        ? `Menyinkronkan ${pendingSync} data…`
+        ? `Syncing ${pendingSync} items…`
         : pendingSync > 0
-          ? `Offline · ${pendingSync} data tersimpan di HP, dikirim saat online`
-          : "Offline · scan & laporan tetap bisa, disimpan di HP"}
+          ? `Offline · ${pendingSync} items saved on this phone, sent when back online`
+          : "Offline · scanning & reporting still work, saved on this phone"}
     </div>
   )
 }

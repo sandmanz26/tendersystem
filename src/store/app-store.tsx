@@ -15,7 +15,7 @@ import type {
 import { getEventProgress, type TaskBook } from "@/lib/progress"
 import { getWhereabouts } from "@/lib/whereabouts"
 
-const STORAGE_KEY = "kru:state:v2"
+const STORAGE_KEY = "kru:state:v3"
 
 interface PersistedState {
   phaseIndex: Record<string, number>
@@ -150,7 +150,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch {
-      toast.error("Memori browser penuh. Data terbaru belum tersimpan, hapus beberapa foto laporan.", {
+      toast.error("Browser storage is full. Latest changes aren't saved; remove some report photos.", {
         id: "storage-full",
       })
     }
@@ -162,7 +162,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     const t = window.setTimeout(() => {
       const n = countPending(ref.current)
       commit(markAllSynced(ref.current))
-      toast.success(`${n} data tersinkron ke server`, { id: "sync" })
+      toast.success(`${n} items synced to the server`, { id: "sync" })
     }, 1500)
     return () => window.clearTimeout(t)
   }, [online, pendingSync, commit])
@@ -229,7 +229,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         status: "ok",
         code,
         skippedPrevious: skipped ? prev!.key : undefined,
-        conditionNote: asset.condition !== "Baik" && phase.key === "load_out" ? asset.notes : undefined,
+        conditionNote: asset.condition !== "Good" && phase.key === "load_out" ? asset.notes : undefined,
       }
     },
     [commit]
@@ -293,7 +293,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         ...input,
         id: `RPT-${String(maxId + 1).padStart(4, "0")}`,
         phase,
-        status: "Terbuka",
+        status: "Open",
         createdAt: new Date().toISOString(),
         by: CURRENT_USER_ID,
         updates: [],

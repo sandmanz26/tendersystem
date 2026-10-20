@@ -30,15 +30,15 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route index element={<HomePage />} />
             <Route path="event/:id" element={<EventDetailPage />} />
-            <Route path="event/:eventId/barang/:code" element={<ItemDetailPage />} />
-            <Route path="barang" element={<InventoryPage />} />
-            <Route path="barang/:code" element={<ItemDetailPage />} />
+            <Route path="event/:eventId/items/:code" element={<ItemDetailPage />} />
+            <Route path="items" element={<InventoryPage />} />
+            <Route path="items/:code" element={<ItemDetailPage />} />
             <Route path="scan" element={<ScanPickerPage />} />
             <Route path="scan/:eventId" element={<ScannerPage />} />
-            <Route path="lapor" element={<ReportNewPage />} />
-            <Route path="laporan" element={<ReportsPage />} />
-            <Route path="laporan/:id" element={<ReportDetailPage />} />
-            <Route path="profil" element={<ProfilePage />} />
+            <Route path="new-report" element={<ReportNewPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="reports/:id" element={<ReportDetailPage />} />
+            <Route path="profile" element={<ProfilePage />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

@@ -48,7 +48,7 @@ export function TopBar({
         {back && (
           <button
             type="button"
-            aria-label="Kembali"
+            aria-label="Back"
             onClick={() => (onBack ? onBack(go) : go())}
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card shadow-soft active:scale-95"
           >

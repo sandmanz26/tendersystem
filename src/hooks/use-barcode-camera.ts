@@ -80,7 +80,7 @@ export function useBarcodeCamera(
         setError(null)
         tick()
       })
-      .catch(() => setError("Kamera tidak bisa diakses. Cek izin kamera di browser."))
+      .catch(() => setError("Can't access the camera. Check the browser's camera permission."))
 
     return () => {
       stopped = true

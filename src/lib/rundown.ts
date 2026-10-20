@@ -23,8 +23,8 @@ export function nowAndNext(event: WeddingEvent, now = new Date()) {
 }
 
 export function inMinutes(m: number) {
-  if (m < 60) return `${m} mnt lagi`
+  if (m < 60) return `in ${m} min`
   const h = Math.floor(m / 60)
   const r = m % 60
-  return r ? `${h} j ${r} mnt lagi` : `${h} jam lagi`
+  return r ? `in ${h} h ${r} min` : `in ${h} h`
 }

@@ -51,16 +51,16 @@ export function ScanPickerPage() {
 
   return (
     <div>
-      <TopBar large back={false} subtitle="Pilih event yang sedang kamu kerjakan" title="Scan barang" />
+      <TopBar large back={false} subtitle="Pick the event you're working on" title="Scan items" />
       {scannable.length === 0 ? (
         <EmptyState
           icon={PackageCheck}
-          title="Tidak ada fase yang perlu scan"
-          body="Scan dibutuhkan saat muat di gudang, tiba di venue, bongkar, dan kembali ke gudang."
+          title="No phase needs scanning"
+          body="Scanning is needed at warehouse load-out, venue arrival, teardown, and warehouse return."
         />
       ) : (
         <>
-          <SectionLabel>Menunggu scan · {scannable.length}</SectionLabel>
+          <SectionLabel>Awaiting scan · {scannable.length}</SectionLabel>
           <div className="flex flex-col gap-3 px-4">
             {scannable.map(({ e, p }) => {
               const cleared = p!.scanned + p!.reported
@@ -80,7 +80,7 @@ export function ScanPickerPage() {
                       {p!.phase.label} · {relativeDay(e.date)}
                     </p>
                     <p className="text-xs text-muted-foreground tabular">
-                      {cleared}/{p!.total} barang
+                      {cleared}/{p!.total} items
                     </p>
                   </div>
                   <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-ink text-white">
@@ -181,15 +181,15 @@ export function ScannerPage() {
           icon={!assigned ? Ban : Info}
           title={
             !assigned
-              ? "Kamu tidak ditugaskan di event ini"
+              ? "You're not assigned to this event"
               : phase
-                ? `Fase ${phase.label} tidak butuh scan`
-                : "Event sudah ditutup"
+                ? `${phase.label} doesn't need scanning`
+                : "This event is closed"
           }
-          body={!assigned ? "Minta koordinator menambahkanmu ke tim kalau ini keliru." : undefined}
+          body={!assigned ? "Ask the coordinator to add you to the team if this is a mistake." : undefined}
           action={
             <Button asChild variant="outline">
-              <Link to={`/event/${event.id}`}>Kembali ke event</Link>
+              <Link to={`/event/${event.id}`}>Back to event</Link>
             </Button>
           }
         />
@@ -220,7 +220,7 @@ export function ScannerPage() {
         <div className="flex h-14 items-center gap-2 px-3">
           <button
             type="button"
-            aria-label="Tutup scanner"
+            aria-label="Close scanner"
             className="flex size-9 items-center justify-center rounded-full bg-white/10 active:scale-95"
             onClick={() => navigate(`/event/${event.id}`)}
           >
@@ -232,7 +232,7 @@ export function ScannerPage() {
           </div>
           <button
             type="button"
-            aria-label={sound ? "Matikan suara" : "Nyalakan suara"}
+            aria-label={sound ? "Mute sound" : "Unmute sound"}
             onClick={() => setSound((s) => !s)}
             className="flex size-9 items-center justify-center rounded-full bg-white/10 active:scale-95"
           >
@@ -261,8 +261,8 @@ export function ScannerPage() {
           {!camera && (
             <div className="absolute inset-x-0 bottom-4 px-6 text-center text-[13px] text-white/55">
               {cameraScanSupported
-                ? "Nyalakan kamera, arahkan ke label QR"
-                : "Browser ini belum mendukung scan kamera. Ketik kode di label."}
+                ? "Turn on the camera and point it at the QR label"
+                : "This browser can't scan with the camera yet. Type the code on the label."}
             </div>
           )}
           {cameraError && (
@@ -284,7 +284,7 @@ export function ScannerPage() {
             onUndo={() => {
               if (!feedback) return
               undoScan(event.id, feedback.code)
-              toast(`Scan ${feedback.code} dibatalkan`)
+              toast(`Scan of ${feedback.code} undone`)
               setFeedback(null)
             }}
             eventId={event.id}
@@ -301,7 +301,7 @@ export function ScannerPage() {
             <Input
               value={manual}
               onChange={(e) => setManual(e.target.value)}
-              placeholder="Ketik kode, mis. KRS-TFG-01"
+              placeholder="Type a code, e.g. KRS-TFG-01"
               autoCapitalize="characters"
               autoCorrect="off"
               spellCheck={false}
@@ -309,7 +309,7 @@ export function ScannerPage() {
               maxLength={20}
               className="border-white/10 bg-white/8 font-mono text-[14px] text-white uppercase shadow-none placeholder:font-sans placeholder:normal-case placeholder:text-white/40"
             />
-            <Button type="submit" size="icon" variant="secondary" aria-label="Kirim kode" disabled={!manual.trim()}>
+            <Button type="submit" size="icon" variant="secondary" aria-label="Submit code" disabled={!manual.trim()}>
               <CornerDownLeft />
             </Button>
           </form>
@@ -320,7 +320,7 @@ export function ScannerPage() {
               onClick={() => setCamera((c) => !c)}
             >
               {camera ? <CameraOff /> : <Camera />}
-              {camera ? "Matikan" : "Kamera"}
+              {camera ? "Turn off" : "Camera"}
             </Button>
             <Button
               className="bg-white/10 text-white shadow-none hover:bg-white/15"
@@ -338,32 +338,32 @@ export function ScannerPage() {
       <div className="flex-1 pb-32">
         {phase.key === "load_out" && daysAway > 1 && (
           <Callout icon={Info} tone="info" className="mx-4 mt-4">
-            Event ini masih {daysAway} hari lagi. Pastikan kamu memuat untuk event yang benar.
+            This event is still {daysAway} days away. Make sure you're loading for the right event.
           </Callout>
         )}
         {progress.flagged.length > 0 && (
           <Callout icon={TriangleAlert} className="mx-4 mt-4">
-            {progress.flagged.length} barang discan di sini tanpa tercatat di checkpoint sebelumnya.
-            Sudah tercatat untuk koordinator.
+            {progress.flagged.length} items were scanned here without a scan at the previous checkpoint.
+            This has been noted for the coordinator.
           </Callout>
         )}
 
         <div className="flex items-center px-4 pt-4 pb-3">
           <ToggleGroup type="single" value={list} onValueChange={(v) => v && setList(v as typeof list)}>
-            <ToggleGroupItem value="pending">Belum · {progress.pending.length}</ToggleGroupItem>
-            <ToggleGroupItem value="done">Tercatat · {doneCodes.length}</ToggleGroupItem>
+            <ToggleGroupItem value="pending">To scan · {progress.pending.length}</ToggleGroupItem>
+            <ToggleGroupItem value="done">Recorded · {doneCodes.length}</ToggleGroupItem>
           </ToggleGroup>
         </div>
 
         {list === "pending" && progress.pending.length === 0 && (
           <EmptyState
             icon={PackageCheck}
-            title="Semua barang sudah tercatat"
-            body={next ? `Lanjutkan ke fase ${next.label}.` : "Event siap ditutup."}
+            title="Every item is recorded"
+            body={next ? `Continue to ${next.label}.` : "The event is ready to close."}
           />
         )}
         {list === "done" && doneCodes.length === 0 && (
-          <EmptyState icon={ScanLine} title="Belum ada yang discan" body="Mulai dari barang terdekat." />
+          <EmptyState icon={ScanLine} title="Nothing scanned yet" body="Start with the nearest item." />
         )}
 
         <ul className="list-card empty:hidden">
@@ -384,7 +384,7 @@ export function ScannerPage() {
                 ) : (
                   <CircleDashed className="size-5 shrink-0 text-muted-foreground/50" />
                 )}
-                <Link to={`/event/${event.id}/barang/${code}`} className="min-w-0 flex-1">
+                <Link to={`/event/${event.id}/items/${code}`} className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{asset.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     <span className="font-mono text-[11px]">{code}</span> · {asset.unit}
@@ -392,7 +392,7 @@ export function ScannerPage() {
                 </Link>
                 {st.state === "pending" && (
                   <Button asChild size="sm" variant="secondary" className="text-clay">
-                    <Link to={`/lapor?event=${event.id}&type=damage&asset=${code}`}>Lapor</Link>
+                    <Link to={`/new-report?event=${event.id}&type=damage&asset=${code}`}>Report</Link>
                   </Button>
                 )}
                 {st.state === "scanned" && (
@@ -412,8 +412,8 @@ export function ScannerPage() {
 
         {list === "pending" && progress.pending.length > 0 && (
           <p className="px-5 pt-3 text-xs text-muted-foreground">
-            Barang hilang, kurang, atau rusak? Tekan <span className="font-semibold text-clay">Lapor</span>.
-            Barang yang dilaporkan tidak menahan fase, tapi tercatat.
+            Item missing, short, or damaged? Tap <span className="font-semibold text-clay">Report</span>.
+            Reported items don't block the phase, but they stay on record.
           </p>
         )}
       </div>
@@ -431,9 +431,9 @@ export function ScannerPage() {
         >
           {progress.complete
             ? next
-              ? `Selesai, lanjut ke ${next.label}`
-              : "Selesai, tutup event"
-            : `${progress.pending.length} barang lagi`}
+              ? `Done, continue to ${next.label}`
+              : "Done, close event"
+            : `${progress.pending.length} items to go`}
         </Button>
       </div>
 
@@ -485,7 +485,7 @@ function ScanFeedback({
   if (!feedback)
     return (
       <div className="flex h-16 items-center justify-center rounded-2xl border border-dashed border-white/15 px-3 text-[13px] text-white/40">
-        Hasil scan muncul di sini
+        Scan results appear here
       </div>
     )
 
@@ -507,37 +507,37 @@ function ScanFeedback({
       Icon = warnOk ? TriangleAlert : CircleCheck
       title = feedback.name
       detail = feedback.skippedPrevious
-        ? `Tidak tercatat di fase ${PHASES.find((p) => p.key === feedback.skippedPrevious)?.short}. Ditandai untuk dicek.`
+        ? `Not recorded at ${PHASES.find((p) => p.key === feedback.skippedPrevious)?.short}. Flagged for a check.`
         : feedback.conditionNote
-          ? `Perlu cek: ${feedback.conditionNote}`
+          ? `Check first: ${feedback.conditionNote}`
           : feedback.code
       break
     case "duplicate":
       Icon = Info
-      title = `${feedback.name} sudah tercatat`
-      detail = `${clock(feedback.at)} oleh ${personName(feedback.by)}`
+      title = `${feedback.name} already recorded`
+      detail = `${clock(feedback.at)} by ${personName(feedback.by)}`
       break
     case "other-event":
-      title = "Barang ini bukan untuk event ini"
+      title = "This item isn't for this event"
       detail = feedback.eventName
-        ? `${feedback.code} dijadwalkan untuk ${feedback.eventName}. Jangan dimuat.`
-        : `${feedback.code} tidak ada di daftar event ini.`
+        ? `${feedback.code} is booked for ${feedback.eventName}. Don't load it.`
+        : `${feedback.code} isn't on this event's list.`
       break
     case "still-out":
-      title = "Barang masih di event lain"
-      detail = `${feedback.code} belum kembali dari ${feedback.eventName}. Cek label atau hubungi gudang.`
+      title = "Item is still at another event"
+      detail = `${feedback.code} hasn't come back from ${feedback.eventName}. Check the label or call the warehouse.`
       break
     case "unknown":
-      title = "Kode tidak dikenal"
-      detail = `${feedback.code} tidak terdaftar di inventaris. Label mungkin rusak.`
+      title = "Unknown code"
+      detail = `${feedback.code} isn't in the inventory. The label may be damaged.`
       break
     case "invalid":
-      title = "Format kode salah"
-      detail = "Contoh format yang benar: KRS-TFG-01"
+      title = "Wrong code format"
+      detail = "Correct format, e.g. KRS-TFG-01"
       break
     default:
       Icon = Info
-      title = "Scan tidak tersedia di fase ini"
+      title = "Scanning isn't available in this phase"
       detail = ""
   }
 
@@ -561,15 +561,15 @@ function ScanFeedback({
           className="flex shrink-0 items-center gap-1 rounded-full bg-black/20 px-2.5 py-1.5 text-[12px] font-semibold active:scale-95"
         >
           <Undo2 className="size-3.5" />
-          Batal
+          Undo
         </button>
       )}
       {reportable && (
         <Link
-          to={`/lapor?event=${eventId}&type=issue`}
+          to={`/new-report?event=${eventId}&type=issue`}
           className="shrink-0 rounded-full bg-black/20 px-2.5 py-1.5 text-[12px] font-semibold"
         >
-          Lapor
+          Report
         </Link>
       )}
     </div>

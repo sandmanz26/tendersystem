@@ -36,7 +36,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
           ref={canvasRef}
           data-vaul-no-drag
           className="block h-36 w-full touch-none"
-          aria-label="Area tanda tangan"
+          aria-label="Signature area"
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId)
             drawing.current = true
@@ -65,7 +65,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
         <div className="pointer-events-none absolute inset-x-5 bottom-8 border-b border-dashed border-border" />
         {empty && (
           <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[13px] text-muted-foreground">
-            Tanda tangan di sini
+            Sign here
           </span>
         )}
       </div>
@@ -84,7 +84,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
         }}
       >
         <Eraser />
-        Ulangi
+        Clear
       </Button>
     </div>
   )

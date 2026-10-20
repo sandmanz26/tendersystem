@@ -7,22 +7,22 @@ import { timeAgo } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 export const STATUS_VARIANT: Record<ReportStatus, "destructive" | "warning" | "muted"> = {
-  Terbuka: "destructive",
-  Diproses: "warning",
-  Selesai: "muted",
+  Open: "destructive",
+  "In progress": "warning",
+  Resolved: "muted",
 }
 
 export const SEVERITY_DOT: Record<Severity, string> = {
-  Rendah: "bg-muted-foreground/40",
-  Sedang: "bg-warning",
-  Tinggi: "bg-destructive",
+  Low: "bg-muted-foreground/40",
+  Medium: "bg-warning",
+  High: "bg-destructive",
 }
 
 export function ReportRow({ report, eventName }: { report: Report; eventName?: string }) {
   const Icon = report.kind === "damage" ? PackageX : TriangleAlert
   return (
     <Link
-      to={`/laporan/${report.id}`}
+      to={`/reports/${report.id}`}
       className="flex items-start gap-3 px-4 py-3.5 transition-colors active:bg-muted"
     >
       <span
@@ -53,7 +53,7 @@ export function ReportRow({ report, eventName }: { report: Report; eventName?: s
           <span className="shrink-0">{timeAgo(report.createdAt)}</span>
           {report.synced === false && (
             <span className="flex shrink-0 items-center gap-0.5 text-[oklch(0.5_0.1_60)]">
-              <CloudOff className="size-3" /> antre
+              <CloudOff className="size-3" /> queued
             </span>
           )}
         </div>

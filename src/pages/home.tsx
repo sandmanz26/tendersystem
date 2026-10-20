@@ -33,11 +33,11 @@ export function HomePage() {
     .sort((a, b) => Math.abs(dayDiff(a.date)) - Math.abs(dayDiff(b.date)))
   const upcoming = mine.filter((e) => !isClosed(e) && !active.includes(e))
   const done = mine.filter(isClosed).reverse()
-  const openReports = reports.filter((r) => r.status !== "Selesai" && mine.some((e) => e.id === r.eventId))
+  const openReports = reports.filter((r) => r.status !== "Resolved" && mine.some((e) => e.id === r.eventId))
   const [hero, ...otherActive] = active
 
   const me = getPerson(userId)!
-  const today = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })
+  const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })
   const list = tab === "upcoming" ? upcoming : done
 
   return (
@@ -46,11 +46,11 @@ export function HomePage() {
         large
         back={false}
         subtitle={today}
-        title={`Halo, ${me.name.split(" ")[0]}`}
+        title={`Hi, ${me.name.split(" ")[0]}`}
         right={
           <Link
-            to="/laporan"
-            aria-label={`${openReports.length} laporan aktif`}
+            to="/reports"
+            aria-label={`${openReports.length} active reports`}
             className="relative flex size-10 items-center justify-center rounded-full bg-card shadow-soft"
           >
             <Bell className="size-[18px]" />
@@ -68,12 +68,12 @@ export function HomePage() {
           <HeroCard event={hero} progress={getEventProgress(hero, store)} />
         </div>
       ) : (
-        <EmptyState icon={CalendarX2} title="Tidak ada event berjalan" body="Event hari ini akan muncul di sini." />
+        <EmptyState icon={CalendarX2} title="No live events" body="Today's events will show up here." />
       )}
 
       {otherActive.length > 0 && (
         <>
-          <SectionLabel>Juga berjalan</SectionLabel>
+          <SectionLabel>Also live</SectionLabel>
           <div className="flex flex-col gap-3 px-4">
             {otherActive.map((e) => (
               <ActiveCard key={e.id} event={e} progress={getEventProgress(e, store)} />
@@ -83,18 +83,18 @@ export function HomePage() {
       )}
 
       <div className="flex items-center justify-between px-4 pt-7 pb-3">
-        <h2 className="text-lg font-bold tracking-tight">Jadwal</h2>
+        <h2 className="text-lg font-bold tracking-tight">Schedule</h2>
         <ToggleGroup type="single" value={tab} onValueChange={(v) => v && setTab(v as typeof tab)}>
-          <ToggleGroupItem value="upcoming">Mendatang</ToggleGroupItem>
-          <ToggleGroupItem value="done">Selesai</ToggleGroupItem>
+          <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
+          <ToggleGroupItem value="done">Done</ToggleGroupItem>
         </ToggleGroup>
       </div>
 
       {list.length === 0 ? (
         <EmptyState
           icon={CalendarX2}
-          title={tab === "upcoming" ? "Belum ada jadwal" : "Belum ada event selesai"}
-          body={tab === "upcoming" ? "Jadwal baru muncul setelah koordinator menugaskanmu." : undefined}
+          title={tab === "upcoming" ? "Nothing scheduled" : "No finished events yet"}
+          body={tab === "upcoming" ? "New events appear once a coordinator assigns you." : undefined}
         />
       ) : (
         <ul className="list-card">
@@ -155,12 +155,12 @@ function HeroCard({ event, progress }: { event: WeddingEvent; progress: PhasePro
       {phase && progress && (
         <div className="mx-2 mb-2 flex items-center gap-3 rounded-2xl bg-white/[0.07] p-3 pl-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-white/50">Fase {event.phaseIndex + 1}/{PHASES.length}</p>
+            <p className="text-[11px] text-white/50">Phase {event.phaseIndex + 1}/{PHASES.length}</p>
             <p className="truncate text-sm font-semibold">{phase.label}</p>
             <p className="truncate text-[12px] text-white/60 tabular">
               {phase.requiresScan
-                ? `${cleared} dari ${progress.total} barang`
-                : `${progress.tasksDone.length} dari ${phase.tasks?.length ?? 0} checklist`}
+                ? `${cleared} of ${progress.total} items`
+                : `${progress.tasksDone.length} of ${phase.tasks?.length ?? 0} checklist items`}
             </p>
           </div>
           <Button asChild variant={phase.requiresScan ? "brand" : "secondary"} className="shrink-0 rounded-xl">
@@ -176,7 +176,7 @@ function HeroCard({ event, progress }: { event: WeddingEvent; progress: PhasePro
       {next && (
         <div className="flex items-center gap-2 border-t border-white/8 px-5 py-3 text-[12.5px]">
           <Clock className="size-3.5 text-white/50" />
-          <span className="text-white/50">Berikutnya</span>
+          <span className="text-white/50">Next</span>
           <span className="min-w-0 flex-1 truncate font-medium">
             {next.time} · {next.label}
           </span>
@@ -251,7 +251,7 @@ function EventRow({ event }: { event: WeddingEvent }) {
           )}
         </p>
       </div>
-      {closed ? <Badge variant="muted">Selesai</Badge> : <ChevronRight className="size-4 text-muted-foreground/50" />}
+      {closed ? <Badge variant="muted">Done</Badge> : <ChevronRight className="size-4 text-muted-foreground/50" />}
     </Link>
   )
 }
