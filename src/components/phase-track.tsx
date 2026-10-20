@@ -1,7 +1,7 @@
 import { PHASES } from "@/data/phases"
 import { cn } from "@/lib/utils"
 
-/** Compact six-step tracker. Scan phases get a small square marker. */
+/** Six-segment tracker; the current segment is half filled. */
 export function PhaseTrack({
   index,
   className,
@@ -20,21 +20,22 @@ export function PhaseTrack({
         const done = i < index
         const current = i === index
         return (
-          <li key={p.key} className="flex flex-col gap-1.5">
-            <div
-              className={cn(
-                "h-1 rounded-full",
-                dark ? "bg-white/15" : "bg-border",
-                done && (dark ? "bg-white/85" : "bg-primary"),
-                current && (dark ? "bg-[oklch(0.85_0.12_150)]" : "bg-primary/45")
-              )}
-            />
+          <li key={p.key} className="flex min-w-0 flex-col gap-1.5">
+            <div className={cn("relative h-1.5 overflow-hidden rounded-full", dark ? "bg-white/15" : "bg-secondary")}>
+              <div
+                className={cn(
+                  "absolute inset-y-0 left-0 rounded-full",
+                  dark ? "bg-[oklch(0.82_0.14_158)]" : "bg-brand",
+                  done ? "w-full" : current ? "w-1/2" : "w-0"
+                )}
+              />
+            </div>
             {showLabels && (
               <span
                 className={cn(
-                  "truncate text-[10.5px] text-muted-foreground",
-                  current && "font-semibold text-foreground",
-                  done && "text-foreground/70"
+                  "truncate text-[10.5px] font-medium",
+                  dark ? "text-white/50" : "text-muted-foreground",
+                  current && (dark ? "font-semibold text-white" : "font-semibold text-foreground")
                 )}
               >
                 {p.short}

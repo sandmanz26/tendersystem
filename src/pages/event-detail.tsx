@@ -1,46 +1,43 @@
 import * as React from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 import {
+  Check,
   CircleCheck,
   CircleDashed,
   ClipboardList,
+  Clock,
+  CloudOff,
   Crown,
+  EyeOff,
   Navigation,
   PackageSearch,
+  PackageX,
+  PenLine,
   Phone,
-  Plus,
   ScanLine,
   Search,
-  Truck,
   TriangleAlert,
+  Truck,
 } from "lucide-react"
-import { toast } from "sonner"
 
 import { CategoryIcon } from "@/components/category-icon"
 import { PersonRow } from "@/components/person-row"
+import { PhaseCompleteSheet } from "@/components/phase-complete"
 import { PhaseTrack } from "@/components/phase-track"
+import { ProgressRing } from "@/components/progress-ring"
 import { ReportRow } from "@/components/report-row"
-import { EmptyState, SectionLabel } from "@/components/section"
+import { Callout, EmptyState, SectionLabel } from "@/components/section"
 import { TopBar } from "@/components/top-bar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PHASES } from "@/data/phases"
 import type { WeddingEvent } from "@/data/types"
-import { clock, longDate, mapsLink } from "@/lib/format"
+import { clock, longDate, mapsLink, stamp } from "@/lib/format"
 import { getAsset, getPerson, personName } from "@/lib/lookup"
 import { getEventProgress, isClosed, type PhaseProgress } from "@/lib/progress"
+import { inMinutes, nowAndNext } from "@/lib/rundown"
 import { cn } from "@/lib/utils"
 import { useAppStore } from "@/store/app-store"
 import { NotFound } from "./not-found"
@@ -50,7 +47,8 @@ type Tab = (typeof TABS)[number]
 
 export function EventDetailPage() {
   const { id } = useParams()
-  const { events, scans, reports } = useAppStore()
+  const store = useAppStore()
+  const { events, reports, userId } = store
   const [params, setParams] = useSearchParams()
   const event = events.find((e) => e.id === id)
   if (!event) return <NotFound />
@@ -58,49 +56,58 @@ export function EventDetailPage() {
   const tab = (TABS as readonly string[]).includes(params.get("tab") ?? "")
     ? (params.get("tab") as Tab)
     : "info"
-  const progress = getEventProgress(event, scans, reports)
+  const progress = getEventProgress(event, store)
   const eventReports = reports.filter((r) => r.eventId === event.id)
+  const assigned = event.crew.some((c) => c.personId === userId)
 
   return (
     <div>
       <TopBar back="/" title={event.couple} subtitle={`${event.kind} · ${event.venue.name}`} />
 
-      <section className="px-4 pt-5 pb-5">
-        <p className="text-xs font-medium tracking-wide text-clay uppercase">
-          {event.kind} · {event.guests} tamu
-        </p>
-        <h1 className="mt-1 font-serif text-[32px] leading-[1.1] font-medium tracking-tight">
-          {event.couple}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{event.theme}</p>
+      <section className="px-5 pt-3 pb-5">
+        <div className="flex flex-wrap gap-1.5">
+          <Badge variant="secondary">{event.kind}</Badge>
+          <Badge variant="secondary">{event.guests} tamu</Badge>
+          <Badge variant="secondary">{event.theme}</Badge>
+        </div>
+        <h1 className="mt-3 text-[32px] leading-[1.05] font-bold tracking-tight">{event.couple}</h1>
 
-        <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border text-sm">
-          <Fact label="Tanggal" value={longDate(event.date).replace(/^\w+, /, "")} />
-          <Fact label="Call time" value={event.callTime} mono />
-          <Fact label="Acara" value={`${event.startTime}–${event.endTime}`} mono />
-          <Fact label="Venue" value={event.venue.area} />
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <Fact label="Tanggal" value={longDate(event.date).replace(/^\w+, /, "").replace(/ \d{4}$/, "")} />
+          <Fact label="Call time" value={event.callTime} />
+          <Fact label="Acara" value={`${event.startTime}–${event.endTime}`} />
         </div>
       </section>
 
-      <PhasePanel event={event} progress={progress} />
+      {!assigned && (
+        <Callout icon={EyeOff} tone="info" className="mx-4 mb-4">
+          Kamu tidak ditugaskan di event ini. Kamu bisa melihat info, tapi tidak bisa scan atau
+          menutup fase.
+        </Callout>
+      )}
+
+      <NowNext event={event} />
+      <PhasePanel event={event} progress={progress} canAct={assigned} />
 
       <Tabs
         value={tab}
         onValueChange={(v) => setParams({ tab: v }, { replace: true })}
-        className="mt-2 gap-0"
+        className="mt-5 gap-0"
       >
-        <TabsList className="sticky top-14 z-20 bg-background">
-          <TabsTrigger value="info">Info</TabsTrigger>
-          <TabsTrigger value="barang">
-            Barang <Count n={event.assetCodes.length} />
-          </TabsTrigger>
-          <TabsTrigger value="tim">
-            Tim <Count n={event.crew.length} />
-          </TabsTrigger>
-          <TabsTrigger value="laporan">
-            Laporan <Count n={eventReports.length} />
-          </TabsTrigger>
-        </TabsList>
+        <div className="sticky top-14 z-20 bg-background/85 px-4 py-2 backdrop-blur-xl">
+          <TabsList>
+            <TabsTrigger value="info">Info</TabsTrigger>
+            <TabsTrigger value="barang">
+              Barang <Count n={event.assetCodes.length} />
+            </TabsTrigger>
+            <TabsTrigger value="tim">
+              Tim <Count n={event.crew.length} />
+            </TabsTrigger>
+            <TabsTrigger value="laporan">
+              Lapor <Count n={eventReports.length} />
+            </TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="info">
           <InfoTab event={event} />
         </TabsContent>
@@ -111,16 +118,16 @@ export function EventDetailPage() {
           <TeamTab event={event} />
         </TabsContent>
         <TabsContent value="laporan">
-          <div className="flex gap-2 px-4 pt-4 pb-3">
-            <Button asChild variant="outline" className="flex-1">
+          <div className="grid grid-cols-2 gap-2 px-4 pt-2 pb-1">
+            <Button asChild variant="outline">
               <Link to={`/lapor?event=${event.id}&type=issue`}>
                 <TriangleAlert />
                 Lapor masalah
               </Link>
             </Button>
-            <Button asChild variant="outline" className="flex-1">
+            <Button asChild variant="outline">
               <Link to={`/lapor?event=${event.id}&type=damage`}>
-                <Plus />
+                <PackageX className="text-clay" />
                 Barang rusak
               </Link>
             </Button>
@@ -128,7 +135,7 @@ export function EventDetailPage() {
           {eventReports.length === 0 ? (
             <EmptyState icon={ClipboardList} title="Belum ada laporan" body="Semua aman sejauh ini." />
           ) : (
-            <div className="divide-y border-y bg-card">
+            <div className="list-card mt-3">
               {eventReports.map((r) => (
                 <ReportRow key={r.id} report={r} />
               ))}
@@ -141,161 +148,220 @@ export function EventDetailPage() {
 }
 
 function Count({ n }: { n: number }) {
-  return <span className="text-xs font-normal text-muted-foreground tabular">{n}</span>
+  return <span className="text-[11px] font-medium text-muted-foreground tabular">{n}</span>
 }
 
-function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-card px-3 py-2.5">
+    <div className="rounded-2xl bg-card px-3 py-2.5 shadow-soft">
       <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className={cn("mt-0.5 truncate font-medium", mono && "tabular")}>{value}</div>
+      <div className="mt-0.5 truncate text-[14px] font-semibold tabular">{value}</div>
     </div>
   )
 }
 
-function PhasePanel({ event, progress }: { event: WeddingEvent; progress: PhaseProgress | null }) {
-  const { advancePhase, phaseLog } = useAppStore()
-  const [confirm, setConfirm] = React.useState(false)
+function NowNext({ event }: { event: WeddingEvent }) {
+  // Re-render every minute so "x mnt lagi" stays honest.
+  const [, tick] = React.useReducer((x: number) => x + 1, 0)
+  React.useEffect(() => {
+    const t = window.setInterval(tick, 60_000)
+    return () => window.clearInterval(t)
+  }, [])
+  const { now, next, minutesToNext } = nowAndNext(event)
+  if (!now && !next) return null
+  return (
+    <div className="mx-4 mb-3 grid grid-cols-2 gap-2">
+      <div className="rounded-2xl bg-card p-3 shadow-soft">
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold text-brand">
+          <span className="size-1.5 animate-pulse rounded-full bg-brand" />
+          Sekarang
+        </p>
+        <p className="mt-1 line-clamp-2 text-[13px] font-semibold">{now ? now.label : "Belum mulai"}</p>
+        {now && <p className="text-[11px] text-muted-foreground tabular">sejak {now.time}</p>}
+      </div>
+      <div className="rounded-2xl bg-card p-3 shadow-soft">
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+          <Clock className="size-3" />
+          Berikutnya
+        </p>
+        <p className="mt-1 line-clamp-2 text-[13px] font-semibold">{next ? next.label : "Selesai"}</p>
+        {next && (
+          <p className="text-[11px] text-muted-foreground tabular">
+            {next.time} · {inMinutes(minutesToNext!)}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PhasePanel({
+  event,
+  progress,
+  canAct,
+}: {
+  event: WeddingEvent
+  progress: PhaseProgress | null
+  canAct: boolean
+}) {
+  const { phaseLog, toggleTask } = useAppStore()
+  const [sheet, setSheet] = React.useState(false)
 
   if (!progress || isClosed(event)) {
     const last = phaseLog[event.id]?.at(-1)
     return (
-      <div className="mx-4 rounded-xl border bg-card p-4">
+      <div className="mx-4 rounded-3xl bg-card p-5 shadow-soft">
         <PhaseTrack index={PHASES.length} />
-        <div className="mt-3 flex items-center gap-2 text-sm">
-          <CircleCheck className="size-4 text-success" />
-          <span className="font-medium">Event selesai, semua barang kembali.</span>
+        <div className="mt-4 flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-full bg-accent text-accent-foreground">
+            <CircleCheck className="size-5" />
+          </span>
+          <div>
+            <p className="font-semibold">Event selesai</p>
+            {last && (
+              <p className="text-xs text-muted-foreground">
+                Ditutup {stamp(last.at)} · {personName(last.by)}
+              </p>
+            )}
+          </div>
         </div>
-        {last && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Ditutup {clock(last.at)} oleh {personName(last.by)}
-          </p>
-        )}
       </div>
     )
   }
 
   const { phase } = progress
   const cleared = progress.scanned + progress.reported
+  const total = phase.requiresScan ? progress.total : phase.tasks?.length ?? 0
+  const done = phase.requiresScan ? cleared : progress.tasksDone.length
+  const pct = total ? (done / total) * 100 : 100
   const next = PHASES[event.phaseIndex + 1]
 
   return (
-    <div className="mx-4 rounded-xl border bg-card">
-      <div className="p-4">
+    <div className="mx-4 rounded-3xl bg-card shadow-soft">
+      <div className="p-5">
         <PhaseTrack index={event.phaseIndex} />
-        <div className="mt-4 flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] text-muted-foreground">
+        <div className="mt-5 flex items-center gap-4">
+          <ProgressRing value={pct} size={64} stroke={6}>
+            <span className="text-sm font-bold tabular">
+              {done}
+              <span className="text-[10px] font-medium text-muted-foreground">/{total}</span>
+            </span>
+          </ProgressRing>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium text-muted-foreground">
               Fase {event.phaseIndex + 1} dari {PHASES.length}
             </p>
-            <p className="text-base font-semibold">{phase.label}</p>
+            <p className="text-lg leading-tight font-bold">{phase.label}</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">{phase.hint}</p>
           </div>
-          {phase.requiresScan ? (
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {phase.requiresScan && (
             <Badge variant={progress.complete ? "success" : "outline"}>
               <ScanLine />
               Wajib scan
             </Badge>
-          ) : (
-            <Badge variant="muted">Tanpa scan</Badge>
+          )}
+          {phase.handover && (
+            <Badge variant="outline">
+              <PenLine />
+              Tanda tangan {phase.handover.party.toLowerCase()}
+            </Badge>
+          )}
+          {progress.reported > 0 && <Badge variant="warning">{progress.reported} dilaporkan</Badge>}
+          {progress.flagged.length > 0 && (
+            <Badge variant="warning">
+              <TriangleAlert />
+              {progress.flagged.length} lewat checkpoint
+            </Badge>
           )}
         </div>
-        <p className="mt-1 text-[13px] text-muted-foreground">{phase.hint}</p>
 
-        {phase.requiresScan && (
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between text-[13px]">
-              <span className="tabular">
-                <span className="font-semibold">{cleared}</span>
-                <span className="text-muted-foreground"> / {progress.total} barang</span>
-              </span>
-              {progress.reported > 0 && (
-                <span className="text-xs text-clay">{progress.reported} dilaporkan</span>
-              )}
-            </div>
-            <Progress
-              value={(cleared / progress.total) * 100}
-              className="mt-1.5 h-2"
-              indicatorClassName={progress.complete ? "bg-success" : undefined}
-            />
-          </div>
+        {phase.tasks && (
+          <ul className="mt-4 space-y-1">
+            {phase.tasks.map((task) => {
+              const checked = progress.tasksDone.includes(task)
+              return (
+                <li key={task}>
+                  <button
+                    type="button"
+                    disabled={!canAct}
+                    onClick={() => toggleTask(event.id, task)}
+                    className="flex w-full items-center gap-3 rounded-xl px-1 py-2 text-left text-sm active:bg-muted disabled:opacity-60"
+                    aria-pressed={checked}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-6 shrink-0 items-center justify-center rounded-lg border-2 transition-colors",
+                        checked ? "border-brand bg-brand text-white" : "border-input"
+                      )}
+                    >
+                      {checked && <Check className="size-3.5" strokeWidth={3} />}
+                    </span>
+                    <span className={cn(checked && "text-muted-foreground line-through")}>{task}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
         )}
       </div>
 
-      <div className="flex gap-2 border-t p-3">
-        {phase.requiresScan && (
-          <Button asChild className="flex-1" variant={progress.complete ? "outline" : "default"}>
-            <Link to={`/scan/${event.id}`}>
-              <ScanLine />
-              {progress.complete ? "Lihat scan" : "Mulai scan"}
-            </Link>
-          </Button>
-        )}
-        <Button
-          className="flex-1"
-          variant={progress.complete ? "default" : "outline"}
-          disabled={!progress.complete}
-          onClick={() => setConfirm(true)}
-        >
-          {next ? "Lanjut fase" : "Tutup event"}
-        </Button>
-      </div>
-
-      <Dialog open={confirm} onOpenChange={setConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Selesaikan “{phase.label}”?</DialogTitle>
-            <DialogDescription>
-              {next
-                ? `Event akan pindah ke fase ${next.label}. Fase yang sudah selesai tidak bisa dibuka lagi dari aplikasi.`
-                : "Semua barang sudah kembali. Event akan ditutup."}
-            </DialogDescription>
-          </DialogHeader>
-          {phase.requiresScan && (
-            <div className="rounded-lg bg-muted px-3 py-2.5 text-[13px] tabular">
-              {progress.scanned} discan · {progress.reported} dilaporkan rusak/hilang
-            </div>
-          )}
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="ghost">Batal</Button>
-            </DialogClose>
-            <Button
-              onClick={() => {
-                advancePhase(event.id)
-                setConfirm(false)
-                toast.success(next ? `Masuk fase ${next.label}` : "Event ditutup")
-              }}
-            >
-              Ya, selesaikan
+      {canAct && (
+        <div className="flex gap-2 px-3 pb-3">
+          {phase.requiresScan && !progress.complete && (
+            <Button asChild size="lg" className="flex-1">
+              <Link to={`/scan/${event.id}`}>
+                <ScanLine />
+                Mulai scan
+              </Link>
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          )}
+          {(progress.complete || !phase.requiresScan) && (
+            <Button
+              size="lg"
+              variant="brand"
+              className="flex-1"
+              disabled={!progress.complete}
+              onClick={() => setSheet(true)}
+            >
+              {next ? `Lanjut ke ${next.short}` : "Tutup event"}
+            </Button>
+          )}
+        </div>
+      )}
+
+      <PhaseCompleteSheet event={event} progress={progress} open={sheet} onOpenChange={setSheet} />
     </div>
   )
 }
 
 function InfoTab({ event }: { event: WeddingEvent }) {
+  const { phaseLog } = useAppStore()
   const lead = event.crew.find((c) => c.lead)
   const leadPerson = lead && getPerson(lead.personId)
+  const log = phaseLog[event.id] ?? []
+
   return (
     <div className="pb-6">
       <SectionLabel>Lokasi</SectionLabel>
-      <div className="border-y bg-card px-4 py-3.5">
-        <p className="font-medium">{event.venue.name}</p>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">{event.venue.address}</p>
-        <div className="mt-3 flex items-start gap-2 rounded-lg bg-muted/70 px-3 py-2.5 text-[13px]">
-          <Truck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          <span>{event.venue.loadingNote}</span>
+      <div className="list-card">
+        <div className="px-4 py-3.5">
+          <p className="font-semibold">{event.venue.name}</p>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">{event.venue.address}</p>
+          <Callout icon={Truck} tone="info" className="mt-3 px-3 py-2.5">
+            {event.venue.loadingNote}
+          </Callout>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button asChild variant="outline" size="sm">
+        <div className="grid grid-cols-2 gap-2 p-3">
+          <Button asChild variant="secondary" size="sm">
             <a href={mapsLink(`${event.venue.name} ${event.venue.address}`)} target="_blank" rel="noreferrer">
               <Navigation />
               Buka Maps
             </a>
           </Button>
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="secondary" size="sm">
             <a href={`tel:${event.venue.pic.phone}`}>
               <Phone />
               PIC venue
@@ -305,19 +371,17 @@ function InfoTab({ event }: { event: WeddingEvent }) {
       </div>
 
       <SectionLabel>Rundown</SectionLabel>
-      <ol className="border-y bg-card px-4 py-2">
+      <ol className="list-card !divide-y-0 px-4 py-3 [&>*+*]:!border-0">
         {event.rundown.map((r, i) => (
-          <li key={i} className="relative flex gap-4 py-2">
-            <span className="w-11 shrink-0 pt-px text-[13px] font-medium tabular">{r.time}</span>
+          <li key={i} className="relative flex gap-3 pb-3 last:pb-0">
+            <span className="w-11 shrink-0 pt-px text-[13px] font-semibold tabular">{r.time}</span>
             <span className="relative flex flex-col items-center">
-              <span className="mt-1.5 size-2 rounded-full border-2 border-primary bg-card" />
-              {i < event.rundown.length - 1 && (
-                <span className="absolute top-4 -bottom-4 w-px bg-border" />
-              )}
+              <span className="mt-1.5 size-2.5 rounded-full border-2 border-brand bg-card" />
+              {i < event.rundown.length - 1 && <span className="absolute top-4 -bottom-3 w-px bg-border" />}
             </span>
             <span className="flex-1 text-sm">
               {r.label}
-              {r.crewNote && <span className="mt-0.5 block text-xs text-clay">{r.crewNote}</span>}
+              {r.crewNote && <span className="mt-0.5 block text-xs font-medium text-clay">{r.crewNote}</span>}
             </span>
           </li>
         ))}
@@ -326,10 +390,12 @@ function InfoTab({ event }: { event: WeddingEvent }) {
       {event.notes.length > 0 && (
         <>
           <SectionLabel>Catatan untuk crew</SectionLabel>
-          <ul className="flex flex-col gap-2 border-y bg-card px-4 py-3.5 text-sm">
+          <ul className="list-card">
             {event.notes.map((n, i) => (
-              <li key={i} className="flex gap-2.5">
-                <span className="mt-2 size-1 shrink-0 rounded-full bg-foreground/50" />
+              <li key={i} className="flex gap-3 px-4 py-3 text-sm">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-bold">
+                  {i + 1}
+                </span>
                 {n}
               </li>
             ))}
@@ -338,7 +404,7 @@ function InfoTab({ event }: { event: WeddingEvent }) {
       )}
 
       <SectionLabel>Kontak penting</SectionLabel>
-      <div className="divide-y border-y bg-card">
+      <div className="list-card">
         {leadPerson && <PersonRow person={leadPerson} detail="Koordinator lapangan" />}
         <PersonRow
           person={{ id: "c0", name: event.client.name, role: event.client.relation, phone: event.client.phone }}
@@ -349,18 +415,54 @@ function InfoTab({ event }: { event: WeddingEvent }) {
           detail="PIC venue"
         />
       </div>
+
+      {log.length > 0 && (
+        <>
+          <SectionLabel>Riwayat fase</SectionLabel>
+          <ol className="list-card">
+            {log.map((entry, i) => (
+              <li key={i} className="flex items-center gap-3 px-4 py-3">
+                <CircleCheck className="size-[18px] shrink-0 text-brand" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{PHASES.find((p) => p.key === entry.phase)?.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {stamp(entry.at)} · {personName(entry.by)}
+                    {entry.handover && ` · diterima ${entry.handover.name}`}
+                  </p>
+                </div>
+                {entry.handover && (
+                  <img
+                    src={entry.handover.signature}
+                    alt={`Tanda tangan ${entry.handover.name}`}
+                    className="h-8 w-16 rounded-md bg-secondary object-contain"
+                  />
+                )}
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
     </div>
   )
 }
 
+type ItemFilter = "all" | "pending" | "issue"
+
 function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhaseProgress | null }) {
   const [q, setQ] = React.useState("")
+  const [filter, setFilter] = React.useState<ItemFilter>("all")
   const phase = progress?.phase
+  const scanPhase = phase?.requiresScan
+  const s = q.trim().toLowerCase()
+
   const items = event.assetCodes
     .map((code) => getAsset(code)!)
+    .filter((a) => !s || a.name.toLowerCase().includes(s) || a.code.toLowerCase().includes(s))
     .filter((a) => {
-      const s = q.trim().toLowerCase()
-      return !s || a.name.toLowerCase().includes(s) || a.code.toLowerCase().includes(s)
+      if (filter === "all" || !progress) return true
+      const st = progress.byAsset[a.code]
+      if (filter === "pending") return st.state === "pending"
+      return st.state === "reported" || progress.flagged.includes(a.code) || a.condition !== "Baik"
     })
 
   const groups = Object.entries(
@@ -372,31 +474,56 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
 
   return (
     <div className="pb-6">
-      <div className="px-4 pt-4">
+      <div className="space-y-3 px-4 pt-2">
         <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Cari nama atau kode barang"
-            className="pl-9"
+            className="pl-10"
+            type="search"
           />
         </div>
-        {phase?.requiresScan && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Status scan untuk fase <span className="font-medium text-foreground">{phase.label}</span>
-          </p>
+        {scanPhase && (
+          <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
+            {(
+              [
+                ["all", "Semua"],
+                ["pending", `Belum scan · ${progress!.pending.length}`],
+                ["issue", "Perlu perhatian"],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setFilter(v)}
+                className={cn(
+                  "h-8 shrink-0 rounded-full px-3 text-[12.5px] font-semibold",
+                  filter === v ? "bg-ink text-white" : "bg-card shadow-soft"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
-      {groups.length === 0 && <EmptyState icon={PackageSearch} title="Barang tidak ditemukan" />}
+      {groups.length === 0 && (
+        <EmptyState
+          icon={PackageSearch}
+          title={s ? `Tidak ada barang “${q}”` : "Tidak ada barang di filter ini"}
+          body={s ? "Cek ejaan atau cari pakai kode di label." : undefined}
+        />
+      )}
 
       {groups.map(([category, assets]) => (
         <div key={category}>
           <SectionLabel>
             {category} · {assets.length}
           </SectionLabel>
-          <ul className="divide-y border-y bg-card">
+          <ul className="list-card">
             {assets.map((a) => {
               const st = progress?.byAsset[a.code]
               return (
@@ -407,15 +534,13 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
                   >
                     <CategoryIcon category={a.category} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{a.name}</p>
+                      <p className="truncate text-sm font-semibold">{a.name}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        <span className="font-mono text-[11px] text-foreground/70">{a.code}</span> · {a.unit}
+                        <span className="font-mono text-[11px]">{a.code}</span> · {a.unit}
                       </p>
                     </div>
-                    {phase?.requiresScan && st && <ScanState state={st} />}
-                    {!phase?.requiresScan && a.condition !== "Baik" && (
-                      <Badge variant="warning">{a.condition}</Badge>
-                    )}
+                    {scanPhase && st && <ScanState state={st} flagged={progress!.flagged.includes(a.code)} />}
+                    {!scanPhase && a.condition !== "Baik" && <Badge variant="warning">{a.condition}</Badge>}
                   </Link>
                 </li>
               )
@@ -427,33 +552,36 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
   )
 }
 
-function ScanState({ state }: { state: PhaseProgress["byAsset"][string] }) {
+function ScanState({ state, flagged }: { state: PhaseProgress["byAsset"][string]; flagged: boolean }) {
   if (state.state === "scanned")
     return (
-      <span className="flex flex-col items-end text-[11px] text-success">
-        <CircleCheck className="size-[18px]" />
-        <span className="mt-0.5 tabular">{clock(state.record.at)}</span>
+      <span className={cn("flex flex-col items-end text-[11px]", flagged ? "text-clay" : "text-brand")}>
+        {flagged ? <TriangleAlert className="size-[18px]" /> : <CircleCheck className="size-[18px]" />}
+        <span className="mt-0.5 flex items-center gap-0.5 tabular">
+          {state.record.synced === false && <CloudOff className="size-3" />}
+          {clock(state.record.at)}
+        </span>
       </span>
     )
   if (state.state === "reported")
     return (
       <Badge variant="warning">
         <TriangleAlert />
-        Dilaporkan
+        {state.report.category}
       </Badge>
     )
-  return <CircleDashed className="size-[18px] text-muted-foreground/60" />
+  return <CircleDashed className="size-[18px] text-muted-foreground/50" />
 }
 
 function TeamTab({ event }: { event: WeddingEvent }) {
   const { userId } = useAppStore()
-  const internal = event.crew.filter((c) => getPerson(c.personId) && !getPerson(c.personId)!.company)
+  const internal = event.crew.filter((c) => !getPerson(c.personId)?.company)
   const vendors = event.crew.filter((c) => getPerson(c.personId)?.company)
 
   return (
     <div className="pb-6">
       <SectionLabel>Crew internal · {internal.length}</SectionLabel>
-      <div className="divide-y border-y bg-card">
+      <div className="list-card">
         {internal.map((c) => (
           <PersonRow
             key={c.personId}
@@ -462,7 +590,7 @@ function TeamTab({ event }: { event: WeddingEvent }) {
             isYou={c.personId === userId}
             badge={
               c.lead ? (
-                <Badge variant="outline" className="gap-0.5">
+                <Badge variant="success" className="gap-0.5">
                   <Crown />
                   Lead
                 </Badge>
@@ -474,15 +602,16 @@ function TeamTab({ event }: { event: WeddingEvent }) {
       {vendors.length > 0 && (
         <>
           <SectionLabel>Vendor · {vendors.length}</SectionLabel>
-          <div className="divide-y border-y bg-card">
+          <div className="list-card">
             {vendors.map((c) => (
               <PersonRow key={c.personId} person={getPerson(c.personId)!} detail={c.duty} />
             ))}
           </div>
         </>
       )}
-      <p className="px-4 pt-4 text-xs text-muted-foreground">
-        Call time semua crew <span className="font-medium text-foreground tabular">{event.callTime}</span> di gudang.
+      <p className="px-5 pt-4 text-xs text-muted-foreground">
+        Call time semua crew <span className="font-semibold text-foreground tabular">{event.callTime}</span> di
+        gudang.
       </p>
     </div>
   )

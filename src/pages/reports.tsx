@@ -29,6 +29,7 @@ export function ReportsPage() {
   return (
     <div>
       <TopBar
+        large
         back={false}
         title="Laporan"
         subtitle="Masalah lapangan & barang rusak"
@@ -41,7 +42,7 @@ export function ReportsPage() {
           </Button>
         }
       />
-      <div className="overflow-x-auto px-4 py-3 [scrollbar-width:none]">
+      <div className="overflow-x-auto px-4 pb-3 [scrollbar-width:none]">
         <ToggleGroup
           type="single"
           value={filter}
@@ -60,7 +61,7 @@ export function ReportsPage() {
       {visible.length === 0 ? (
         <EmptyState icon={ClipboardList} title="Tidak ada laporan" body="Coba filter lain." />
       ) : (
-        <div className="divide-y border-y bg-card">
+        <div className="list-card">
           {visible.map((r) => (
             <ReportRow key={r.id} report={r} eventName={events.find((e) => e.id === r.eventId)?.couple} />
           ))}

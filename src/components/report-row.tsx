@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { ChevronRight, PackageX, TriangleAlert } from "lucide-react"
+import { ChevronRight, CloudOff, PackageX, TriangleAlert } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import type { Report, ReportStatus, Severity } from "@/data/types"
@@ -27,8 +27,8 @@ export function ReportRow({ report, eventName }: { report: Report; eventName?: s
     >
       <span
         className={cn(
-          "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border",
-          report.kind === "damage" ? "text-clay" : "text-muted-foreground"
+          "mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl",
+          report.kind === "damage" ? "bg-clay/12 text-clay" : "bg-secondary text-muted-foreground"
         )}
       >
         <Icon className="size-[17px]" />
@@ -51,6 +51,11 @@ export function ReportRow({ report, eventName }: { report: Report; eventName?: s
             </>
           )}
           <span className="shrink-0">{timeAgo(report.createdAt)}</span>
+          {report.synced === false && (
+            <span className="flex shrink-0 items-center gap-0.5 text-[oklch(0.5_0.1_60)]">
+              <CloudOff className="size-3" /> antre
+            </span>
+          )}
         </div>
       </div>
       <ChevronRight className="mt-2 size-4 shrink-0 text-muted-foreground/60" />

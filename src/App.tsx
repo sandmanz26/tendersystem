@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell"
 import { Toaster } from "@/components/ui/sonner"
 import { EventDetailPage } from "@/pages/event-detail"
 import { HomePage } from "@/pages/home"
+import { InventoryPage } from "@/pages/inventory"
 import { ItemDetailPage } from "@/pages/item-detail"
 import { NotFound } from "@/pages/not-found"
 import { ProfilePage } from "@/pages/profile"
@@ -30,6 +31,8 @@ export default function App() {
             <Route index element={<HomePage />} />
             <Route path="event/:id" element={<EventDetailPage />} />
             <Route path="event/:eventId/barang/:code" element={<ItemDetailPage />} />
+            <Route path="barang" element={<InventoryPage />} />
+            <Route path="barang/:code" element={<ItemDetailPage />} />
             <Route path="scan" element={<ScanPickerPage />} />
             <Route path="scan/:eventId" element={<ScannerPage />} />
             <Route path="lapor" element={<ReportNewPage />} />

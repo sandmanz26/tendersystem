@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Link, useParams } from "react-router-dom"
-import { ChevronRight, SendHorizontal } from "lucide-react"
+import { ChevronRight, CloudOff, SendHorizontal } from "lucide-react"
 import { toast } from "sonner"
 
 import { CategoryIcon } from "@/components/category-icon"
@@ -39,16 +39,22 @@ export function ReportDetailPage() {
     <div>
       <TopBar title={report.id} subtitle={event.couple} />
 
-      <section className="px-4 pt-5">
+      <section className="mx-4 mt-2 rounded-3xl bg-card p-5 shadow-soft">
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant={STATUS_VARIANT[report.status]}>{report.status}</Badge>
           <Badge variant="outline">
             <span className={cn("size-1.5 rounded-full", SEVERITY_DOT[report.severity])} />
             Urgensi {report.severity.toLowerCase()}
           </Badge>
-          <Badge variant="outline">{report.kind === "damage" ? "Barang rusak" : "Masalah lapangan"}</Badge>
+          <Badge variant="secondary">{report.kind === "damage" ? "Barang rusak" : "Masalah lapangan"}</Badge>
+          {report.synced === false && (
+            <Badge variant="warning">
+              <CloudOff />
+              Menunggu sinyal
+            </Badge>
+          )}
         </div>
-        <h1 className="mt-3 text-xl leading-snug font-semibold">{report.title}</h1>
+        <h1 className="mt-3 text-xl leading-snug font-bold tracking-tight">{report.title}</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-foreground/85">{report.description}</p>
 
         {report.photos.length > 0 && (
@@ -58,7 +64,7 @@ export function ReportDetailPage() {
                 key={i}
                 type="button"
                 onClick={() => setPreview(src)}
-                className="aspect-square overflow-hidden rounded-lg border"
+                className="aspect-square overflow-hidden rounded-xl"
               >
                 <img src={src} alt={`Foto ${i + 1}`} className="size-full object-cover" />
               </button>
@@ -72,7 +78,7 @@ export function ReportDetailPage() {
           <SectionLabel>Barang</SectionLabel>
           <Link
             to={`/event/${event.id}/barang/${asset.code}`}
-            className="flex items-center gap-3 border-y bg-card px-4 py-3 active:bg-muted"
+            className="list-card flex items-center gap-3 px-4 py-3 active:bg-muted"
           >
             <CategoryIcon category={asset.category} />
             <div className="min-w-0 flex-1">
@@ -87,7 +93,7 @@ export function ReportDetailPage() {
       )}
 
       <SectionLabel>Detail</SectionLabel>
-      <div className="divide-y border-y bg-card px-4">
+      <div className="list-card">
         <InfoRow label={report.kind === "damage" ? "Kondisi" : "Kategori"}>{report.category}</InfoRow>
         <InfoRow label="Event">
           <Link to={`/event/${event.id}?tab=laporan`} className="underline underline-offset-4">
@@ -100,7 +106,7 @@ export function ReportDetailPage() {
       </div>
 
       <SectionLabel>Aktivitas</SectionLabel>
-      <ol className="border-y bg-card px-4 py-1">
+      <ol className="list-card px-4 py-1 [&>*+*]:!border-0">
         {thread.map((u, i) => {
           const person = getPerson(u.by)!
           return (
@@ -123,6 +129,12 @@ export function ReportDetailPage() {
         onSubmit={(e) => {
           e.preventDefault()
           if (!note.trim()) return
+          if (report.status === "Selesai") {
+            addReportUpdate(report.id, note.trim(), "Diproses")
+            setNote("")
+            toast.success("Laporan dibuka lagi dengan update baru")
+            return
+          }
           addReportUpdate(report.id, note.trim())
           setNote("")
           toast.success("Update terkirim")
@@ -131,7 +143,12 @@ export function ReportDetailPage() {
         <Textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Tambah update, mis. sudah ditangani / butuh bantuan"
+          placeholder={
+            report.status === "Selesai"
+              ? "Masalah muncul lagi? Tulis update untuk membuka ulang"
+              : "Tambah update, mis. sudah ditangani / butuh bantuan"
+          }
+          maxLength={500}
           className="min-h-20"
         />
         <div className="mt-2 flex gap-2">

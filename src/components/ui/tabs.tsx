@@ -16,8 +16,7 @@ function Tabs({
   )
 }
 
-/* Underline tabs rather than the pill segmented control: reads as a
-   document section switcher, which is what these are. */
+/* Segmented control: a sliding white pill on a grey track. */
 function TabsList({
   className,
   ...props
@@ -26,7 +25,7 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        "flex w-full items-stretch gap-5 overflow-x-auto border-b px-4 [scrollbar-width:none]",
+        "flex w-full items-stretch gap-1 overflow-x-auto rounded-xl bg-secondary p-1 [scrollbar-width:none]",
         className
       )}
       {...props}
@@ -42,7 +41,7 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "relative -mb-px inline-flex h-11 shrink-0 items-center gap-1.5 border-b-2 border-transparent text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors outline-none focus-visible:text-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground [&_svg]:size-4",
+        "inline-flex h-9 flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[13px] font-semibold whitespace-nowrap text-muted-foreground transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_3px_oklch(0_0_0/0.1)] [&_svg]:size-4",
         className
       )}
       {...props}

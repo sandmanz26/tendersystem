@@ -1,19 +1,19 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@fontsource-variable/inter-tight";
-@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Inter Tight Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Fraunces Variable", ui-serif, Georgia, serif;
-  --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, monospace;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 6px);
+  --radius-lg: calc(var(--radius) - 4px);
+  --radius-xl: var(--radius);
+  --radius-2xl: calc(var(--radius) + 4px);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -33,36 +33,40 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-clay: var(--clay);
+  --color-brand: var(--brand);
+  --color-ink: var(--ink);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
 }
 
-/* Warm paper + ink, a single forest accent. Status colours are muted on purpose:
-   they need to read in sunlight without turning the UI into a traffic light. */
+/* Grouped-list surfaces (cool grey page, white cards), ink for primary
+   actions, one emerald brand colour that doubles as "done/scanned". */
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.975 0.008 85);
-  --foreground: oklch(0.23 0.012 60);
-  --card: oklch(0.995 0.004 85);
+  --radius: 1rem;
+  --background: oklch(0.967 0.003 260);
+  --foreground: oklch(0.2 0.008 265);
+  --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: oklch(0.37 0.05 155);
-  --primary-foreground: oklch(0.98 0.01 90);
-  --secondary: oklch(0.94 0.012 85);
+  --ink: oklch(0.2 0.008 265);
+  --primary: var(--ink);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.945 0.004 260);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.945 0.01 85);
-  --muted-foreground: oklch(0.5 0.015 65);
-  --accent: oklch(0.93 0.025 150);
-  --accent-foreground: oklch(0.3 0.05 155);
-  --destructive: oklch(0.54 0.17 30);
-  --success: oklch(0.52 0.1 155);
-  --warning: oklch(0.7 0.13 70);
-  --clay: oklch(0.62 0.11 45);
-  --border: oklch(0.895 0.012 80);
-  --input: oklch(0.87 0.014 80);
-  --ring: oklch(0.37 0.05 155 / 0.5);
+  --muted: oklch(0.955 0.004 260);
+  --muted-foreground: oklch(0.54 0.012 260);
+  --brand: oklch(0.63 0.15 158);
+  --accent: oklch(0.95 0.045 160);
+  --accent-foreground: oklch(0.42 0.1 160);
+  --destructive: oklch(0.59 0.2 25);
+  --success: var(--brand);
+  --warning: oklch(0.77 0.15 70);
+  --clay: oklch(0.63 0.16 48);
+  --border: oklch(0.915 0.005 260);
+  --input: oklch(0.9 0.006 260);
+  --ring: oklch(0.63 0.15 158 / 0.45);
 }
 
 @layer base {
@@ -76,10 +80,9 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "ss01", "cv11";
   }
-  /* Desktop: show the phone-width column on a slightly darker table. */
   @media (min-width: 480px) {
     body {
-      background: oklch(0.93 0.01 80);
+      background: oklch(0.92 0.004 260);
     }
   }
 }
@@ -90,6 +93,29 @@
 
 @utility pb-safe {
   padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+
+/* Soft elevation used by cards and grouped lists. */
+@utility shadow-soft {
+  box-shadow:
+    0 0 0 1px oklch(0.2 0.01 265 / 0.04),
+    0 1px 2px oklch(0.2 0.01 265 / 0.04),
+    0 4px 16px -6px oklch(0.2 0.01 265 / 0.08);
+}
+
+/* Inset grouped list: rounded white card with hairline dividers. */
+@utility list-card {
+  margin-inline: 1rem;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow:
+    0 0 0 1px oklch(0.2 0.01 265 / 0.04),
+    0 1px 2px oklch(0.2 0.01 265 / 0.04),
+    0 4px 16px -6px oklch(0.2 0.01 265 / 0.08);
+  & > * + * {
+    border-top: 1px solid var(--border);
+  }
 }
 
 @keyframes scan-sweep {
@@ -104,10 +130,27 @@
 }
 
 @keyframes flash-in {
-  from { transform: translateY(4px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: translateY(6px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 @utility animate-flash {
-  animation: flash-in 180ms ease-out;
+  animation: flash-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@utility animate-page {
+  animation: page-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

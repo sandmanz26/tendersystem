@@ -4,7 +4,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import type { Person } from "@/data/types"
 import { initials, waLink } from "@/lib/format"
-import { cn } from "@/lib/utils"
 
 const TONES = [
   "bg-[oklch(0.92_0.03_150)] text-[oklch(0.35_0.05_155)]",
@@ -17,7 +16,7 @@ const TONES = [
 export function PersonAvatar({ person, className }: { person: Person; className?: string }) {
   const tone = TONES[Number(person.id.replace(/\D/g, "")) % TONES.length]
   return (
-    <Avatar className={className}>
+    <Avatar className={className ?? "size-10"}>
       <AvatarFallback className={tone}>{initials(person.name)}</AvatarFallback>
     </Avatar>
   )
@@ -50,12 +49,12 @@ export function PersonRow({
       </div>
       {!isYou && (
         <div className="flex gap-1">
-          <Button asChild variant="outline" size="icon-sm" aria-label={`WhatsApp ${person.name}`}>
+          <Button asChild variant="secondary" size="icon-sm" aria-label={`WhatsApp ${person.name}`}>
             <a href={waLink(person.phone)} target="_blank" rel="noreferrer">
-              <MessageCircle />
+              <MessageCircle className="text-brand" />
             </a>
           </Button>
-          <Button asChild variant="outline" size="icon-sm" aria-label={`Telepon ${person.name}`}>
+          <Button asChild variant="secondary" size="icon-sm" aria-label={`Telepon ${person.name}`}>
             <a href={`tel:${person.phone}`}>
               <Phone />
             </a>
@@ -66,6 +65,3 @@ export function PersonRow({
   )
 }
 
-export function Divided({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("divide-y border-y bg-card", className)}>{children}</div>
-}

@@ -6,6 +6,10 @@ export interface Phase {
   short: string
   requiresScan: boolean
   hint: string
+  /** Checklist that must be ticked before a non-scan phase can close. */
+  tasks?: string[]
+  /** Phase closes only with a signed handover from this party. */
+  handover?: { party: string; hint: string }
 }
 
 export type AssetCategory =
@@ -82,6 +86,10 @@ export interface WeddingEvent {
 export interface ScanRecord {
   at: string // ISO
   by: string // personId
+  /** false while the device is offline; flips once the queue is pushed. */
+  synced?: boolean
+  /** Scanned here although it never got a scan in the previous scan phase. */
+  skippedPrevious?: boolean
 }
 
 /** scans[eventId][phaseKey][assetCode] */
@@ -114,10 +122,20 @@ export interface Report {
   createdAt: string
   by: string
   updates: ReportUpdate[]
+  synced?: boolean
+}
+
+export interface Handover {
+  name: string
+  party: string
+  /** PNG data URL of the drawn signature */
+  signature: string
+  note?: string
 }
 
 export interface PhaseLogEntry {
   phase: PhaseKey
   at: string
   by: string
+  handover?: Handover
 }

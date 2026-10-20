@@ -1,41 +1,39 @@
 import * as React from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import {
+  Ban,
   Camera,
   CameraOff,
   CircleCheck,
   CircleDashed,
+  CloudOff,
   CornerDownLeft,
   Info,
   PackageCheck,
   ScanLine,
   TriangleAlert,
+  Undo2,
+  Volume2,
+  VolumeX,
   Wand2,
   X,
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { PhaseCompleteSheet } from "@/components/phase-complete"
 import { PhaseTrack } from "@/components/phase-track"
-import { EmptyState, SectionLabel } from "@/components/section"
+import { ProgressRing } from "@/components/progress-ring"
+import { Callout, EmptyState, SectionLabel } from "@/components/section"
+import { SyncStatus } from "@/components/sync-status"
 import { TopBar } from "@/components/top-bar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Progress } from "@/components/ui/progress"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { PHASES } from "@/data/phases"
 import { cameraScanSupported, useBarcodeCamera } from "@/hooks/use-barcode-camera"
-import { clock, relativeDay } from "@/lib/format"
-import { getAsset } from "@/lib/lookup"
+import { clock, dayDiff, relativeDay } from "@/lib/format"
+import { getAsset, personName } from "@/lib/lookup"
 import { getEventProgress } from "@/lib/progress"
 import { cn } from "@/lib/utils"
 import { useAppStore, type ScanResult } from "@/store/app-store"
@@ -43,16 +41,17 @@ import { NotFound } from "./not-found"
 
 /* /scan: pick which event to scan for. One crew member can be on several events. */
 export function ScanPickerPage() {
-  const { events, scans, reports, userId } = useAppStore()
+  const store = useAppStore()
+  const { events, userId } = store
   const scannable = events
     .filter((e) => e.crew.some((c) => c.personId === userId))
-    .map((e) => ({ e, p: getEventProgress(e, scans, reports) }))
+    .map((e) => ({ e, p: getEventProgress(e, store) }))
     .filter(({ p }) => p?.phase.requiresScan)
     .sort((a, b) => a.e.date.localeCompare(b.e.date))
 
   return (
     <div>
-      <TopBar back={false} title="Scan barang" subtitle="Pilih event yang sedang kamu kerjakan" />
+      <TopBar large back={false} subtitle="Pilih event yang sedang kamu kerjakan" title="Scan barang" />
       {scannable.length === 0 ? (
         <EmptyState
           icon={PackageCheck}
@@ -62,55 +61,86 @@ export function ScanPickerPage() {
       ) : (
         <>
           <SectionLabel>Menunggu scan · {scannable.length}</SectionLabel>
-          <ul className="divide-y border-y bg-card">
+          <div className="flex flex-col gap-3 px-4">
             {scannable.map(({ e, p }) => {
               const cleared = p!.scanned + p!.reported
+              const pct = (cleared / p!.total) * 100
               return (
-                <li key={e.id}>
-                  <Link to={`/scan/${e.id}`} className="block px-4 py-4 active:bg-muted">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-serif text-lg font-medium">{e.couple}</p>
-                        <p className="text-[13px] text-muted-foreground">
-                          {relativeDay(e.date)} · {e.venue.name}
-                        </p>
-                      </div>
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                        <ScanLine className="size-[18px]" />
-                      </span>
-                    </div>
-                    <div className="mt-3 flex items-baseline justify-between text-[13px]">
-                      <span className="font-medium">{p!.phase.label}</span>
-                      <span className="text-muted-foreground tabular">
-                        {cleared}/{p!.total}
-                      </span>
-                    </div>
-                    <Progress value={(cleared / p!.total) * 100} className="mt-1.5" />
-                  </Link>
-                </li>
+                <Link
+                  key={e.id}
+                  to={`/scan/${e.id}`}
+                  className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-soft active:scale-[0.99]"
+                >
+                  <ProgressRing value={pct} size={52} stroke={5}>
+                    <span className="text-[12px] font-bold tabular">{Math.round(pct)}%</span>
+                  </ProgressRing>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{e.couple}</p>
+                    <p className="truncate text-[13px] text-muted-foreground">
+                      {p!.phase.label} · {relativeDay(e.date)}
+                    </p>
+                    <p className="text-xs text-muted-foreground tabular">
+                      {cleared}/{p!.total} barang
+                    </p>
+                  </div>
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-ink text-white">
+                    <ScanLine className="size-5" />
+                  </span>
+                </Link>
               )
             })}
-          </ul>
+          </div>
         </>
       )}
     </div>
   )
 }
 
-type Feedback = ScanResult & { name?: string; key: number }
+type Feedback = ScanResult & { name?: string; key: number; shownAt: number }
+
+/* Short beeps so the crew doesn't need to look at the screen for every scan. */
+let audioCtx: AudioContext | undefined
+function beep(ok: boolean) {
+  try {
+    audioCtx ??= new AudioContext()
+    const play = (freq: number, start: number) => {
+      const osc = audioCtx!.createOscillator()
+      const gain = audioCtx!.createGain()
+      osc.frequency.value = freq
+      osc.type = "sine"
+      gain.gain.setValueAtTime(0.12, audioCtx!.currentTime + start)
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx!.currentTime + start + 0.12)
+      osc.connect(gain).connect(audioCtx!.destination)
+      osc.start(audioCtx!.currentTime + start)
+      osc.stop(audioCtx!.currentTime + start + 0.13)
+    }
+    if (ok) play(1320, 0)
+    else {
+      play(330, 0)
+      play(330, 0.16)
+    }
+  } catch {
+    /* audio blocked: haptics/visuals still cover it */
+  }
+}
+
+const UNDO_WINDOW_MS = 8000
 
 /* /scan/:eventId: the scanner for the event's current phase. */
 export function ScannerPage() {
   const { eventId } = useParams()
   const navigate = useNavigate()
-  const { events, scans, reports, scan, advancePhase } = useAppStore()
+  const store = useAppStore()
+  const { events, scan, undoScan, userId, online } = store
   const event = events.find((e) => e.id === eventId)
 
   const [manual, setManual] = React.useState("")
   const [feedback, setFeedback] = React.useState<Feedback | null>(null)
   const [camera, setCamera] = React.useState(false)
+  const [sound, setSound] = React.useState(true)
   const [list, setList] = React.useState<"pending" | "done">("pending")
-  const [confirm, setConfirm] = React.useState(false)
+  const [sheet, setSheet] = React.useState(false)
+  const [, rerender] = React.useReducer((x: number) => x + 1, 0)
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const counter = React.useRef(0)
 
@@ -118,26 +148,45 @@ export function ScannerPage() {
     (code: string) => {
       if (!eventId) return
       const result = scan(eventId, code)
-      if (result.status === "ok") navigator.vibrate?.(35)
-      else navigator.vibrate?.([60, 60, 60])
-      setFeedback({ ...result, name: getAsset(result.code)?.name, key: ++counter.current })
+      const ok = result.status === "ok"
+      navigator.vibrate?.(ok ? 35 : [70, 50, 70])
+      if (sound) beep(ok && !result.skippedPrevious)
+      setFeedback({ ...result, name: getAsset(result.code)?.name, key: ++counter.current, shownAt: Date.now() })
     },
-    [eventId, scan]
+    [eventId, scan, sound]
   )
 
   const { error: cameraError } = useBarcodeCamera(videoRef, camera, handleCode)
 
-  if (!event) return <NotFound />
-  const progress = getEventProgress(event, scans, reports)
-  const phase = PHASES[event.phaseIndex]
+  // Expire the undo button.
+  React.useEffect(() => {
+    if (feedback?.status !== "ok") return
+    const t = window.setTimeout(rerender, UNDO_WINDOW_MS + 50)
+    return () => window.clearTimeout(t)
+  }, [feedback])
 
-  if (!progress || !phase?.requiresScan) {
+  // Leaving the page with the camera on would keep the LED on in some browsers.
+  React.useEffect(() => () => setCamera(false), [])
+
+  if (!event) return <NotFound />
+  const progress = getEventProgress(event, store)
+  const phase = PHASES[event.phaseIndex]
+  const assigned = event.crew.some((c) => c.personId === userId)
+
+  if (!assigned || !progress || !phase?.requiresScan) {
     return (
       <div>
-        <TopBar title={event.couple} />
+        <TopBar title={event.couple} back={`/event/${event.id}`} />
         <EmptyState
-          icon={Info}
-          title={phase ? `Fase ${phase.label} tidak butuh scan` : "Event sudah ditutup"}
+          icon={!assigned ? Ban : Info}
+          title={
+            !assigned
+              ? "Kamu tidak ditugaskan di event ini"
+              : phase
+                ? `Fase ${phase.label} tidak butuh scan`
+                : "Event sudah ditutup"
+          }
+          body={!assigned ? "Minta koordinator menambahkanmu ke tim kalau ini keliru." : undefined}
           action={
             <Button asChild variant="outline">
               <Link to={`/event/${event.id}`}>Kembali ke event</Link>
@@ -152,6 +201,11 @@ export function ScannerPage() {
   const pct = (cleared / progress.total) * 100
   const doneCodes = event.assetCodes.filter((c) => progress.byAsset[c].state !== "pending")
   const next = PHASES[event.phaseIndex + 1]
+  const daysAway = dayDiff(event.date)
+  const canUndo =
+    feedback?.status === "ok" &&
+    Date.now() - feedback.shownAt < UNDO_WINDOW_MS &&
+    progress.byAsset[feedback.code]?.state === "scanned"
 
   const simulate = () => {
     const code = progress.pending[Math.floor(Math.random() * progress.pending.length)]
@@ -161,52 +215,80 @@ export function ScannerPage() {
   return (
     <div className="flex min-h-dvh flex-col">
       {/* Dark capture area */}
-      <div className="bg-[oklch(0.2_0.012_60)] text-[oklch(0.96_0.008_85)]">
-        <div className="flex h-14 items-center gap-1 px-2">
-          <Button
-            variant="ghost"
-            size="icon"
+      <div className="bg-[oklch(0.17_0.008_265)] text-white">
+        <SyncStatus dark />
+        <div className="flex h-14 items-center gap-2 px-3">
+          <button
+            type="button"
             aria-label="Tutup scanner"
-            className="hover:bg-white/10"
+            className="flex size-9 items-center justify-center rounded-full bg-white/10 active:scale-95"
             onClick={() => navigate(`/event/${event.id}`)}
           >
             <X className="size-5" />
-          </Button>
+          </button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[15px] font-semibold">{phase.label}</p>
             <p className="truncate text-xs text-white/55">{event.couple}</p>
           </div>
-          <div className="pr-2 text-right tabular">
-            <span className="text-xl font-semibold">{cleared}</span>
-            <span className="text-sm text-white/50">/{progress.total}</span>
-          </div>
+          <button
+            type="button"
+            aria-label={sound ? "Matikan suara" : "Nyalakan suara"}
+            onClick={() => setSound((s) => !s)}
+            className="flex size-9 items-center justify-center rounded-full bg-white/10 active:scale-95"
+          >
+            {sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+          </button>
+          <ProgressRing
+            value={pct}
+            size={44}
+            stroke={4}
+            trackClassName="stroke-white/12"
+            barClassName="stroke-[oklch(0.82_0.14_158)]"
+          >
+            <span className="text-[11px] font-bold tabular">{cleared}</span>
+          </ProgressRing>
         </div>
 
         <div className="px-4">
           <PhaseTrack index={event.phaseIndex} showLabels={false} tone="dark" />
         </div>
 
-        <div className="relative mx-4 mt-4 aspect-[4/3] overflow-hidden rounded-xl bg-black/40">
+        <div className="relative mx-4 mt-4 aspect-[4/3] overflow-hidden rounded-3xl bg-black/50">
           {camera && (
             <video ref={videoRef} playsInline muted className="absolute inset-0 size-full object-cover" />
           )}
           <Viewfinder active={camera} />
           {!camera && (
-            <div className="absolute inset-x-0 bottom-4 text-center text-[13px] text-white/60">
+            <div className="absolute inset-x-0 bottom-4 px-6 text-center text-[13px] text-white/55">
               {cameraScanSupported
                 ? "Nyalakan kamera, arahkan ke label QR"
-                : "Ketik kode di label, atau pakai scanner demo"}
+                : "Browser ini belum mendukung scan kamera. Ketik kode di label."}
             </div>
           )}
           {cameraError && (
-            <div className="absolute inset-x-3 bottom-3 rounded-lg bg-black/70 px-3 py-2 text-xs">
+            <div className="absolute inset-x-3 bottom-3 rounded-xl bg-black/75 px-3 py-2 text-xs">
               {cameraError}
             </div>
+          )}
+          {!online && (
+            <span className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold text-[oklch(0.88_0.1_75)]">
+              <CloudOff className="size-3" /> Offline
+            </span>
           )}
         </div>
 
         <div className="px-4 pt-3 pb-4">
-          <ScanFeedback feedback={feedback} />
+          <ScanFeedback
+            feedback={feedback}
+            canUndo={canUndo}
+            onUndo={() => {
+              if (!feedback) return
+              undoScan(event.id, feedback.code)
+              toast(`Scan ${feedback.code} dibatalkan`)
+              setFeedback(null)
+            }}
+            eventId={event.id}
+          />
           <form
             className="mt-3 flex gap-2"
             onSubmit={(e) => {
@@ -219,29 +301,29 @@ export function ScannerPage() {
             <Input
               value={manual}
               onChange={(e) => setManual(e.target.value)}
-              placeholder="Kode barang, mis. KRS-TFG-01"
+              placeholder="Ketik kode, mis. KRS-TFG-01"
               autoCapitalize="characters"
               autoCorrect="off"
               spellCheck={false}
-              className="border-white/15 bg-white/8 font-mono text-[14px] text-white uppercase placeholder:font-sans placeholder:normal-case placeholder:text-white/40"
+              enterKeyHint="send"
+              maxLength={20}
+              className="border-white/10 bg-white/8 font-mono text-[14px] text-white uppercase shadow-none placeholder:font-sans placeholder:normal-case placeholder:text-white/40"
             />
-            <Button type="submit" size="icon" variant="secondary" aria-label="Kirim kode">
+            <Button type="submit" size="icon" variant="secondary" aria-label="Kirim kode" disabled={!manual.trim()}>
               <CornerDownLeft />
             </Button>
           </form>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <Button
-              variant="outline"
-              className="border-white/15 bg-transparent text-white hover:bg-white/10"
+              className="bg-white/10 text-white shadow-none hover:bg-white/15"
               disabled={!cameraScanSupported}
               onClick={() => setCamera((c) => !c)}
             >
               {camera ? <CameraOff /> : <Camera />}
-              {camera ? "Matikan kamera" : "Kamera"}
+              {camera ? "Matikan" : "Kamera"}
             </Button>
             <Button
-              variant="outline"
-              className="border-white/15 bg-transparent text-white hover:bg-white/10"
+              className="bg-white/10 text-white shadow-none hover:bg-white/15"
               disabled={progress.pending.length === 0}
               onClick={simulate}
             >
@@ -253,11 +335,23 @@ export function ScannerPage() {
       </div>
 
       {/* Light checklist area */}
-      <div className="flex-1 pb-24">
-        <div className="flex items-center justify-between px-4 pt-4 pb-3">
+      <div className="flex-1 pb-32">
+        {phase.key === "load_out" && daysAway > 1 && (
+          <Callout icon={Info} tone="info" className="mx-4 mt-4">
+            Event ini masih {daysAway} hari lagi. Pastikan kamu memuat untuk event yang benar.
+          </Callout>
+        )}
+        {progress.flagged.length > 0 && (
+          <Callout icon={TriangleAlert} className="mx-4 mt-4">
+            {progress.flagged.length} barang discan di sini tanpa tercatat di checkpoint sebelumnya.
+            Sudah tercatat untuk koordinator.
+          </Callout>
+        )}
+
+        <div className="flex items-center px-4 pt-4 pb-3">
           <ToggleGroup type="single" value={list} onValueChange={(v) => v && setList(v as typeof list)}>
             <ToggleGroupItem value="pending">Belum · {progress.pending.length}</ToggleGroupItem>
-            <ToggleGroupItem value="done">Selesai · {doneCodes.length}</ToggleGroupItem>
+            <ToggleGroupItem value="done">Tercatat · {doneCodes.length}</ToggleGroupItem>
           </ToggleGroup>
         </div>
 
@@ -268,33 +362,47 @@ export function ScannerPage() {
             body={next ? `Lanjutkan ke fase ${next.label}.` : "Event siap ditutup."}
           />
         )}
+        {list === "done" && doneCodes.length === 0 && (
+          <EmptyState icon={ScanLine} title="Belum ada yang discan" body="Mulai dari barang terdekat." />
+        )}
 
-        <ul className="divide-y border-y bg-card empty:hidden">
+        <ul className="list-card empty:hidden">
           {(list === "pending" ? progress.pending : doneCodes).map((code) => {
             const asset = getAsset(code)!
             const st = progress.byAsset[code]
+            const flagged = progress.flagged.includes(code)
             return (
               <li key={code} className="flex items-center gap-3 px-4 py-3">
                 {st.state === "scanned" ? (
-                  <CircleCheck className="size-5 shrink-0 text-success" />
+                  flagged ? (
+                    <TriangleAlert className="size-5 shrink-0 text-clay" />
+                  ) : (
+                    <CircleCheck className="size-5 shrink-0 text-brand" />
+                  )
                 ) : st.state === "reported" ? (
                   <TriangleAlert className="size-5 shrink-0 text-clay" />
                 ) : (
-                  <CircleDashed className="size-5 shrink-0 text-muted-foreground/60" />
+                  <CircleDashed className="size-5 shrink-0 text-muted-foreground/50" />
                 )}
                 <Link to={`/event/${event.id}/barang/${code}`} className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{asset.name}</p>
+                  <p className="truncate text-sm font-semibold">{asset.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    <span className="font-mono text-[11px] text-foreground/70">{code}</span> · {asset.unit}
+                    <span className="font-mono text-[11px]">{code}</span> · {asset.unit}
                   </p>
                 </Link>
                 {st.state === "pending" && (
-                  <Button asChild size="sm" variant="ghost" className="text-clay">
+                  <Button asChild size="sm" variant="secondary" className="text-clay">
                     <Link to={`/lapor?event=${event.id}&type=damage&asset=${code}`}>Lapor</Link>
                   </Button>
                 )}
                 {st.state === "scanned" && (
-                  <span className="text-xs text-muted-foreground tabular">{clock(st.record.at)}</span>
+                  <span className="flex flex-col items-end text-[11px] text-muted-foreground tabular">
+                    <span className="flex items-center gap-1">
+                      {st.record.synced === false && <CloudOff className="size-3" />}
+                      {clock(st.record.at)}
+                    </span>
+                    <span>{personName(st.record.by).split(" ")[0]}</span>
+                  </span>
                 )}
                 {st.state === "reported" && <Badge variant="warning">{st.report.category}</Badge>}
               </li>
@@ -303,121 +411,167 @@ export function ScannerPage() {
         </ul>
 
         {list === "pending" && progress.pending.length > 0 && (
-          <p className="px-4 pt-3 text-xs text-muted-foreground">
-            Barang hilang atau rusak? Tekan <span className="font-medium text-clay">Lapor</span>.
-            Barang yang dilaporkan tidak menahan fase.
+          <p className="px-5 pt-3 text-xs text-muted-foreground">
+            Barang hilang, kurang, atau rusak? Tekan <span className="font-semibold text-clay">Lapor</span>.
+            Barang yang dilaporkan tidak menahan fase, tapi tercatat.
           </p>
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[440px] border-t bg-card/95 px-4 pt-3 pb-[max(env(safe-area-inset-bottom),12px)] backdrop-blur">
-        <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{progress.complete ? "Siap lanjut" : `${progress.pending.length} barang lagi`}</span>
-          <span className="tabular">{Math.round(pct)}%</span>
-        </div>
+      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[440px] bg-gradient-to-t from-background via-background to-transparent px-4 pt-6 pb-[max(env(safe-area-inset-bottom),14px)]">
         <Button
           size="lg"
+          variant={progress.complete ? "brand" : "default"}
           className="w-full"
           disabled={!progress.complete}
-          onClick={() => setConfirm(true)}
+          onClick={() => {
+            setCamera(false)
+            setSheet(true)
+          }}
         >
-          {next ? `Selesai, lanjut ke ${next.label}` : "Selesai, tutup event"}
+          {progress.complete
+            ? next
+              ? `Selesai, lanjut ke ${next.label}`
+              : "Selesai, tutup event"
+            : `${progress.pending.length} barang lagi`}
         </Button>
       </div>
 
-      <Dialog open={confirm} onOpenChange={setConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Selesaikan “{phase.label}”?</DialogTitle>
-            <DialogDescription>
-              {progress.scanned} barang discan
-              {progress.reported > 0 && `, ${progress.reported} dilaporkan rusak/hilang`}.
-              {next ? ` Event pindah ke fase ${next.label}.` : " Event akan ditutup."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="ghost">Batal</Button>
-            </DialogClose>
-            <Button
-              onClick={() => {
-                advancePhase(event.id)
-                toast.success(next ? `Masuk fase ${next.label}` : "Event ditutup")
-                navigate(`/event/${event.id}`, { replace: true })
-              }}
-            >
-              Ya, selesaikan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PhaseCompleteSheet
+        event={event}
+        progress={progress}
+        open={sheet}
+        onOpenChange={setSheet}
+        onDone={() => navigate(`/event/${event.id}`, { replace: true })}
+      />
     </div>
   )
 }
 
 function Viewfinder({ active }: { active: boolean }) {
-  const corner = "absolute size-7 border-white/85"
+  const corner = "absolute size-8 border-white/90"
   return (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
       <div className="relative size-[58%]">
-        <span className={cn(corner, "top-0 left-0 rounded-tl-lg border-t-2 border-l-2")} />
-        <span className={cn(corner, "top-0 right-0 rounded-tr-lg border-t-2 border-r-2")} />
-        <span className={cn(corner, "bottom-0 left-0 rounded-bl-lg border-b-2 border-l-2")} />
-        <span className={cn(corner, "right-0 bottom-0 rounded-br-lg border-r-2 border-b-2")} />
+        <span className={cn(corner, "top-0 left-0 rounded-tl-2xl border-t-[3px] border-l-[3px]")} />
+        <span className={cn(corner, "top-0 right-0 rounded-tr-2xl border-t-[3px] border-r-[3px]")} />
+        <span className={cn(corner, "bottom-0 left-0 rounded-bl-2xl border-b-[3px] border-l-[3px]")} />
+        <span className={cn(corner, "right-0 bottom-0 rounded-br-2xl border-r-[3px] border-b-[3px]")} />
         <div className="absolute inset-x-3 top-0 bottom-0 overflow-hidden">
           <div
             className={cn(
-              "absolute inset-x-0 h-px bg-[oklch(0.85_0.12_150)] shadow-[0_0_12px_2px_oklch(0.85_0.12_150/0.6)]",
+              "absolute inset-x-0 h-0.5 rounded-full bg-[oklch(0.85_0.14_158)] shadow-[0_0_16px_3px_oklch(0.85_0.14_158/0.6)]",
               active ? "animate-sweep" : "opacity-0"
             )}
           />
         </div>
-        {!active && (
-          <ScanLine className="absolute top-1/2 left-1/2 size-8 -translate-1/2 text-white/25" />
-        )}
+        {!active && <ScanLine className="absolute top-1/2 left-1/2 size-9 -translate-1/2 text-white/20" />}
       </div>
     </div>
   )
 }
 
-function ScanFeedback({ feedback }: { feedback: Feedback | null }) {
+function ScanFeedback({
+  feedback,
+  canUndo,
+  onUndo,
+  eventId,
+}: {
+  feedback: Feedback | null
+  canUndo: boolean
+  onUndo: () => void
+  eventId: string
+}) {
   if (!feedback)
     return (
-      <div className="flex h-14 items-center rounded-lg border border-dashed border-white/15 px-3 text-[13px] text-white/45">
+      <div className="flex h-16 items-center justify-center rounded-2xl border border-dashed border-white/15 px-3 text-[13px] text-white/40">
         Hasil scan muncul di sini
       </div>
     )
 
-  const tone = {
-    ok: "bg-[oklch(0.42_0.08_155)] text-white",
-    duplicate: "bg-[oklch(0.45_0.08_75)] text-white",
-    unknown: "bg-[oklch(0.45_0.13_30)] text-white",
-    "not-scan-phase": "bg-white/10 text-white",
-  }[feedback.status]
+  const warnOk = feedback.status === "ok" && (feedback.skippedPrevious || feedback.conditionNote)
+  const tone =
+    feedback.status === "ok"
+      ? warnOk
+        ? "bg-[oklch(0.5_0.1_70)]"
+        : "bg-[oklch(0.5_0.12_158)]"
+      : feedback.status === "duplicate"
+        ? "bg-white/12"
+        : "bg-[oklch(0.5_0.17_25)]"
 
-  const title = {
-    ok: feedback.name,
-    duplicate: `${feedback.name} sudah discan`,
-    unknown: "Kode tidak ada di daftar event ini",
-    "not-scan-phase": "Fase ini tidak butuh scan",
-  }[feedback.status]
+  let title: React.ReactNode
+  let detail: React.ReactNode
+  let Icon = X
+  switch (feedback.status) {
+    case "ok":
+      Icon = warnOk ? TriangleAlert : CircleCheck
+      title = feedback.name
+      detail = feedback.skippedPrevious
+        ? `Tidak tercatat di fase ${PHASES.find((p) => p.key === feedback.skippedPrevious)?.short}. Ditandai untuk dicek.`
+        : feedback.conditionNote
+          ? `Perlu cek: ${feedback.conditionNote}`
+          : feedback.code
+      break
+    case "duplicate":
+      Icon = Info
+      title = `${feedback.name} sudah tercatat`
+      detail = `${clock(feedback.at)} oleh ${personName(feedback.by)}`
+      break
+    case "other-event":
+      title = "Barang ini bukan untuk event ini"
+      detail = feedback.eventName
+        ? `${feedback.code} dijadwalkan untuk ${feedback.eventName}. Jangan dimuat.`
+        : `${feedback.code} tidak ada di daftar event ini.`
+      break
+    case "still-out":
+      title = "Barang masih di event lain"
+      detail = `${feedback.code} belum kembali dari ${feedback.eventName}. Cek label atau hubungi gudang.`
+      break
+    case "unknown":
+      title = "Kode tidak dikenal"
+      detail = `${feedback.code} tidak terdaftar di inventaris. Label mungkin rusak.`
+      break
+    case "invalid":
+      title = "Format kode salah"
+      detail = "Contoh format yang benar: KRS-TFG-01"
+      break
+    default:
+      Icon = Info
+      title = "Scan tidak tersedia di fase ini"
+      detail = ""
+  }
 
-  const detail =
-    feedback.status === "duplicate"
-      ? `${feedback.code} · tercatat ${clock(feedback.at)}`
-      : feedback.status === "unknown"
-        ? `${feedback.code} · cek ulang label, atau barang salah muat`
-        : feedback.code
-
-  const Icon = feedback.status === "ok" ? CircleCheck : feedback.status === "unknown" ? X : Info
+  const reportable = feedback.status === "unknown" || feedback.status === "other-event"
 
   return (
-    <div key={feedback.key} className={cn("flex h-14 animate-flash items-center gap-3 rounded-lg px-3", tone)}>
+    <div
+      key={feedback.key}
+      role="alert"
+      className={cn("flex min-h-16 animate-flash items-center gap-3 rounded-2xl px-3.5 py-2.5", tone)}
+    >
       <Icon className="size-5 shrink-0" />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{title}</p>
-        <p className="truncate font-mono text-[11px] opacity-80">{detail}</p>
+        <p className="line-clamp-2 text-[12px] leading-snug text-white/80">{detail}</p>
       </div>
+      {canUndo && (
+        <button
+          type="button"
+          onClick={onUndo}
+          className="flex shrink-0 items-center gap-1 rounded-full bg-black/20 px-2.5 py-1.5 text-[12px] font-semibold active:scale-95"
+        >
+          <Undo2 className="size-3.5" />
+          Batal
+        </button>
+      )}
+      {reportable && (
+        <Link
+          to={`/lapor?event=${eventId}&type=issue`}
+          className="shrink-0 rounded-full bg-black/20 px-2.5 py-1.5 text-[12px] font-semibold"
+        >
+          Lapor
+        </Link>
+      )}
     </div>
   )
 }

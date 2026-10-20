@@ -360,7 +360,7 @@ const allScanned = (codes: string[], offset: number, start: string, by: string) 
     codes.map((code, i) => {
       const mins = m + i * 2
       const t = `${String(h + Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`
-      return [code, { at: at(offset, t), by }]
+      return [code, { at: at(offset, t), by, synced: true }]
     })
   )
 }

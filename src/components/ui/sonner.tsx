@@ -11,7 +11,7 @@ function Toaster(props: ToasterProps) {
           "--normal-bg": "var(--foreground)",
           "--normal-text": "var(--background)",
           "--normal-border": "transparent",
-          "--border-radius": "10px",
+          "--border-radius": "14px",
         } as React.CSSProperties
       }
       toastOptions={{ className: "!font-sans !text-[13px]" }}
