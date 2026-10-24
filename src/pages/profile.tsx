@@ -39,11 +39,11 @@ export function ProfilePage() {
     <div>
       <TopBar large back={false} title="Profile" />
 
-      <section className="mx-4 rounded-3xl bg-card p-5 shadow-soft">
+      <section className="mx-4 rounded-xl p-4 edge">
         <div className="flex items-center gap-4">
           <PersonAvatar person={me} className="size-16 text-lg" />
           <div className="min-w-0">
-            <h1 className="truncate text-xl font-bold tracking-tight">{me.name}</h1>
+            <p className="truncate text-xl font-semibold">{me.name}</p>
             <p className="text-sm text-muted-foreground">{me.role}</p>
           </div>
         </div>
@@ -53,9 +53,9 @@ export function ProfilePage() {
             [scanCount, "Scans"],
             [myReports, "Reports"],
           ].map(([v, l]) => (
-            <div key={l} className="rounded-2xl bg-secondary py-3">
-              <div className="text-xl font-bold tabular">{v}</div>
-              <div className="text-[11px] text-muted-foreground">{l}</div>
+            <div key={l} className="py-1">
+              <div className="text-[22px] font-semibold tabular">{v}</div>
+              <div className="text-[12px] text-muted-foreground">{l}</div>
             </div>
           ))}
         </div>
@@ -67,7 +67,7 @@ export function ProfilePage() {
           <span
             className={cn(
               "flex size-9 items-center justify-center rounded-xl",
-              online ? "bg-accent text-accent-foreground" : "bg-warning/15 text-[oklch(0.5_0.1_60)]"
+              online ? "bg-brand-soft text-brand-ink" : "bg-pill-warning text-pill-warning-ink"
             )}
           >
             {online ? <Cloud className="size-[18px]" /> : <CloudOff className="size-[18px]" />}
@@ -110,7 +110,7 @@ export function ProfilePage() {
                       {e.kind} · {e.venue.name}
                     </span>
                   </span>
-                  <ChevronRight className="size-4 text-muted-foreground/50" />
+                  <ChevronRight className="size-4 text-muted-foreground" />
                 </Link>
               </li>
             ))}
@@ -137,7 +137,7 @@ export function ProfilePage() {
           Sign out
         </Button>
       </div>
-      <p className="px-4 pt-6 pb-4 text-center text-[11px] text-muted-foreground">Kru · v0.2 demo</p>
+      <p className="px-4 pt-6 pb-4 text-center text-[12px] text-muted-foreground">Kru · v0.2 demo</p>
 
       <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
         <DialogContent>

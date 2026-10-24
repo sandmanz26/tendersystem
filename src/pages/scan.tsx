@@ -2,6 +2,7 @@ import * as React from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import {
   Ban,
+  ChevronRight,
   Camera,
   CameraOff,
   CircleCheck,
@@ -21,8 +22,7 @@ import {
 import { toast } from "sonner"
 
 import { PhaseCompleteSheet } from "@/components/phase-complete"
-import { PhaseTrack } from "@/components/phase-track"
-import { ProgressRing } from "@/components/progress-ring"
+import { ManifestGrid } from "@/components/manifest-grid"
 import { Callout, EmptyState, SectionLabel } from "@/components/section"
 import { SyncStatus } from "@/components/sync-status"
 import { TopBar } from "@/components/top-bar"
@@ -61,34 +61,25 @@ export function ScanPickerPage() {
       ) : (
         <>
           <SectionLabel>Awaiting scan · {scannable.length}</SectionLabel>
-          <div className="flex flex-col gap-3 px-4">
-            {scannable.map(({ e, p }) => {
-              const cleared = p!.scanned + p!.reported
-              const pct = (cleared / p!.total) * 100
-              return (
-                <Link
-                  key={e.id}
-                  to={`/scan/${e.id}`}
-                  className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-soft active:scale-[0.99]"
-                >
-                  <ProgressRing value={pct} size={52} stroke={5}>
-                    <span className="text-[12px] font-bold tabular">{Math.round(pct)}%</span>
-                  </ProgressRing>
+          <div className="list-card">
+            {scannable.map(({ e, p }) => (
+              <Link key={e.id} to={`/scan/${e.id}`} className="block px-4 py-3.5 active:bg-secondary">
+                <div className="flex items-center gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{e.couple}</p>
+                    <p className="truncate text-[15px] font-semibold">{e.couple}</p>
                     <p className="truncate text-[13px] text-muted-foreground">
                       {p!.phase.label} · {relativeDay(e.date)}
                     </p>
-                    <p className="text-xs text-muted-foreground tabular">
-                      {cleared}/{p!.total} items
-                    </p>
                   </div>
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-ink text-white">
-                    <ScanLine className="size-5" />
+                  <span className="text-[15px] font-semibold tabular">
+                    {p!.pending.length}
+                    <span className="font-normal text-muted-foreground"> to scan</span>
                   </span>
-                </Link>
-              )
-            })}
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                </div>
+                <ManifestGrid progress={p!} codes={e.assetCodes} legend={false} className="mt-3 [&>div>span]:h-3" />
+              </Link>
+            ))}
           </div>
         </>
       )}
@@ -198,7 +189,6 @@ export function ScannerPage() {
   }
 
   const cleared = progress.scanned + progress.reported
-  const pct = (cleared / progress.total) * 100
   const doneCodes = event.assetCodes.filter((c) => progress.byAsset[c].state !== "pending")
   const next = PHASES[event.phaseIndex + 1]
   const daysAway = dayDiff(event.date)
@@ -215,51 +205,46 @@ export function ScannerPage() {
   return (
     <div className="flex min-h-dvh flex-col">
       {/* Dark capture area */}
-      <div className="bg-[oklch(0.17_0.008_265)] text-white">
+      <div className="bg-[#111111] text-white">
         <SyncStatus dark />
         <div className="flex h-14 items-center gap-2 px-3">
           <button
             type="button"
             aria-label="Close scanner"
-            className="flex size-9 items-center justify-center rounded-full bg-white/10 active:scale-95"
+            className="flex size-10 items-center justify-center rounded-md bg-white/10 active:translate-y-px"
             onClick={() => navigate(`/event/${event.id}`)}
           >
             <X className="size-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-semibold">{phase.label}</p>
-            <p className="truncate text-xs text-white/55">{event.couple}</p>
+            <h1 className="truncate text-[16px] font-semibold">{phase.label}</h1>
+            <p className="truncate text-xs text-white/70">{event.couple}</p>
           </div>
           <button
             type="button"
             aria-label={sound ? "Mute sound" : "Unmute sound"}
             onClick={() => setSound((s) => !s)}
-            className="flex size-9 items-center justify-center rounded-full bg-white/10 active:scale-95"
+            className="flex size-10 items-center justify-center rounded-md bg-white/10 active:translate-y-px"
           >
             {sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
           </button>
-          <ProgressRing
-            value={pct}
-            size={44}
-            stroke={4}
-            trackClassName="stroke-white/12"
-            barClassName="stroke-[oklch(0.82_0.14_158)]"
-          >
-            <span className="text-[11px] font-bold tabular">{cleared}</span>
-          </ProgressRing>
+          <p className="pl-1 text-right tabular">
+            <span className="text-[20px] font-semibold">{cleared}</span>
+            <span className="text-[14px] text-white/70">/{progress.total}</span>
+          </p>
         </div>
 
         <div className="px-4">
-          <PhaseTrack index={event.phaseIndex} showLabels={false} tone="dark" />
+          <ManifestGrid progress={progress} codes={event.assetCodes} tone="dark" legend={false} className="[&>div>span]:h-2.5" />
         </div>
 
-        <div className="relative mx-4 mt-4 aspect-[4/3] overflow-hidden rounded-3xl bg-black/50">
+        <div className="relative mx-4 mt-4 aspect-[4/3] overflow-hidden rounded-xl bg-[#1c1c1e]">
           {camera && (
             <video ref={videoRef} playsInline muted className="absolute inset-0 size-full object-cover" />
           )}
           <Viewfinder active={camera} />
           {!camera && (
-            <div className="absolute inset-x-0 bottom-4 px-6 text-center text-[13px] text-white/55">
+            <div className="absolute inset-x-0 bottom-4 px-6 text-center text-[14px] text-white/70">
               {cameraScanSupported
                 ? "Turn on the camera and point it at the QR label"
                 : "This browser can't scan with the camera yet. Type the code on the label."}
@@ -271,7 +256,7 @@ export function ScannerPage() {
             </div>
           )}
           {!online && (
-            <span className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold text-[oklch(0.88_0.1_75)]">
+            <span className="absolute top-3 left-3 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[12px] font-semibold text-[#fcd34d]">
               <CloudOff className="size-3" /> Offline
             </span>
           )}
@@ -307,7 +292,7 @@ export function ScannerPage() {
               spellCheck={false}
               enterKeyHint="send"
               maxLength={20}
-              className="border-white/10 bg-white/8 font-mono text-[14px] text-white uppercase shadow-none placeholder:font-sans placeholder:normal-case placeholder:text-white/40"
+              className="border-white/15 bg-white/8 font-mono text-[15px] text-white uppercase placeholder:font-sans placeholder:normal-case placeholder:text-white/40"
             />
             <Button type="submit" size="icon" variant="secondary" aria-label="Submit code" disabled={!manual.trim()}>
               <CornerDownLeft />
@@ -315,7 +300,7 @@ export function ScannerPage() {
           </form>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <Button
-              className="bg-white/10 text-white shadow-none hover:bg-white/15"
+              className="bg-white/10 text-white hover:bg-white/15 disabled:bg-white/5 disabled:text-white/50"
               disabled={!cameraScanSupported}
               onClick={() => setCamera((c) => !c)}
             >
@@ -323,7 +308,7 @@ export function ScannerPage() {
               {camera ? "Turn off" : "Camera"}
             </Button>
             <Button
-              className="bg-white/10 text-white shadow-none hover:bg-white/15"
+              className="bg-white/10 text-white hover:bg-white/15 disabled:bg-white/5 disabled:text-white/50"
               disabled={progress.pending.length === 0}
               onClick={simulate}
             >
@@ -375,28 +360,28 @@ export function ScannerPage() {
               <li key={code} className="flex items-center gap-3 px-4 py-3">
                 {st.state === "scanned" ? (
                   flagged ? (
-                    <TriangleAlert className="size-5 shrink-0 text-clay" />
+                    <TriangleAlert className="size-5 shrink-0 text-warning" />
                   ) : (
                     <CircleCheck className="size-5 shrink-0 text-brand" />
                   )
                 ) : st.state === "reported" ? (
-                  <TriangleAlert className="size-5 shrink-0 text-clay" />
+                  <TriangleAlert className="size-5 shrink-0 text-warning" />
                 ) : (
-                  <CircleDashed className="size-5 shrink-0 text-muted-foreground/50" />
+                  <CircleDashed className="size-5 shrink-0 text-[#9ca3af]" />
                 )}
                 <Link to={`/event/${event.id}/items/${code}`} className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{asset.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    <span className="font-mono text-[11px]">{code}</span> · {asset.unit}
+                    <span className="font-mono text-[12px]">{code}</span> · {asset.unit}
                   </p>
                 </Link>
                 {st.state === "pending" && (
-                  <Button asChild size="sm" variant="secondary" className="text-clay">
+                  <Button asChild size="sm" variant="ghost" className="px-2 text-[14px] font-medium text-foreground underline-offset-4 hover:underline">
                     <Link to={`/new-report?event=${event.id}&type=damage&asset=${code}`}>Report</Link>
                   </Button>
                 )}
                 {st.state === "scanned" && (
-                  <span className="flex flex-col items-end text-[11px] text-muted-foreground tabular">
+                  <span className="flex flex-col items-end text-[12px] text-muted-foreground tabular">
                     <span className="flex items-center gap-1">
                       {st.record.synced === false && <CloudOff className="size-3" />}
                       {clock(st.record.at)}
@@ -412,13 +397,13 @@ export function ScannerPage() {
 
         {list === "pending" && progress.pending.length > 0 && (
           <p className="px-5 pt-3 text-xs text-muted-foreground">
-            Item missing, short, or damaged? Tap <span className="font-semibold text-clay">Report</span>.
+            Item missing, short, or damaged? Tap <span className="font-semibold text-warning">Report</span>.
             Reported items don't block the phase, but they stay on record.
           </p>
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[440px] bg-gradient-to-t from-background via-background to-transparent px-4 pt-6 pb-[max(env(safe-area-inset-bottom),14px)]">
+      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[440px] border-t bg-card px-4 pt-3 pb-[max(env(safe-area-inset-bottom),14px)]">
         <Button
           size="lg"
           variant={progress.complete ? "brand" : "default"}
@@ -460,12 +445,12 @@ function Viewfinder({ active }: { active: boolean }) {
         <div className="absolute inset-x-3 top-0 bottom-0 overflow-hidden">
           <div
             className={cn(
-              "absolute inset-x-0 h-0.5 rounded-full bg-[oklch(0.85_0.14_158)] shadow-[0_0_16px_3px_oklch(0.85_0.14_158/0.6)]",
+              "absolute inset-x-0 h-0.5 rounded-full bg-[#f07aa8]",
               active ? "animate-sweep" : "opacity-0"
             )}
           />
         </div>
-        {!active && <ScanLine className="absolute top-1/2 left-1/2 size-9 -translate-1/2 text-white/20" />}
+        {!active && <ScanLine className="absolute top-1/2 left-1/2 size-9 -translate-1/2 text-white/30" />}
       </div>
     </div>
   )
@@ -484,7 +469,7 @@ function ScanFeedback({
 }) {
   if (!feedback)
     return (
-      <div className="flex h-16 items-center justify-center rounded-2xl border border-dashed border-white/15 px-3 text-[13px] text-white/40">
+      <div className="flex h-16 items-center justify-center rounded-xl border border-dashed border-white/25 px-3 text-[14px] text-white/70">
         Scan results appear here
       </div>
     )
@@ -493,11 +478,11 @@ function ScanFeedback({
   const tone =
     feedback.status === "ok"
       ? warnOk
-        ? "bg-[oklch(0.5_0.1_70)]"
-        : "bg-[oklch(0.5_0.12_158)]"
+        ? "bg-[#8a4b0b]"
+        : "bg-brand"
       : feedback.status === "duplicate"
         ? "bg-white/12"
-        : "bg-[oklch(0.5_0.17_25)]"
+        : "bg-[#b42318]"
 
   let title: React.ReactNode
   let detail: React.ReactNode
@@ -547,12 +532,12 @@ function ScanFeedback({
     <div
       key={feedback.key}
       role="alert"
-      className={cn("flex min-h-16 animate-flash items-center gap-3 rounded-2xl px-3.5 py-2.5", tone)}
+      className={cn("flex min-h-16 animate-flash items-center gap-3 rounded-xl px-3.5 py-2.5", tone)}
     >
       <Icon className="size-5 shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{title}</p>
-        <p className="line-clamp-2 text-[12px] leading-snug text-white/80">{detail}</p>
+        <p className="line-clamp-2 text-[13px] leading-snug text-white/90">{detail}</p>
       </div>
       {canUndo && (
         <button

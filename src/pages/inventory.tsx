@@ -47,8 +47,8 @@ export function InventoryPage() {
               type="button"
               onClick={() => setCat(c)}
               className={cn(
-                "h-8 shrink-0 rounded-full px-3 text-[12.5px] font-semibold",
-                cat === c ? "bg-ink text-white" : "bg-card shadow-soft"
+                "h-9 shrink-0 rounded-md border px-3 text-[13px] font-medium",
+                cat === c ? "border-brand bg-brand-soft text-brand-ink" : "border-input bg-card"
               )}
             >
               {c}
@@ -72,16 +72,12 @@ export function InventoryPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{a.name}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        <span className="font-mono text-[11px]">{a.code}</span> ·{" "}
+                        <span className="font-mono text-[12px]">{a.code}</span> ·{" "}
                         {where.at === "event" ? `at ${where.event.couple}` : a.location}
                       </p>
                     </div>
-                    {a.condition !== "Good" ? (
-                      <Badge variant="warning">{a.condition}</Badge>
-                    ) : where.at === "event" ? (
-                      <Badge variant="success">In use</Badge>
-                    ) : null}
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+                    {a.condition !== "Good" && <Badge variant="warning">{a.condition}</Badge>}
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                   </Link>
                 </li>
               )

@@ -51,7 +51,7 @@ export function PersonRow({
         <div className="flex gap-1">
           <Button asChild variant="secondary" size="icon-sm" aria-label={`WhatsApp ${person.name}`}>
             <a href={waLink(person.phone)} target="_blank" rel="noreferrer">
-              <MessageCircle className="text-brand" />
+              <MessageCircle />
             </a>
           </Button>
           <Button asChild variant="secondary" size="icon-sm" aria-label={`Call ${person.name}`}>

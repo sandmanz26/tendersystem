@@ -31,7 +31,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
 
   return (
     <div>
-      <div className="relative overflow-hidden rounded-2xl bg-card shadow-soft">
+      <div className="relative overflow-hidden rounded-md border border-input bg-card">
         <canvas
           ref={canvasRef}
           data-vaul-no-drag

@@ -13,7 +13,7 @@ export const STATUS_VARIANT: Record<ReportStatus, "destructive" | "warning" | "m
 }
 
 export const SEVERITY_DOT: Record<Severity, string> = {
-  Low: "bg-muted-foreground/40",
+  Low: "bg-[#9ca3af]",
   Medium: "bg-warning",
   High: "bg-destructive",
 }
@@ -25,14 +25,10 @@ export function ReportRow({ report, eventName }: { report: Report; eventName?: s
       to={`/reports/${report.id}`}
       className="flex items-start gap-3 px-4 py-3.5 transition-colors active:bg-muted"
     >
-      <span
-        className={cn(
-          "mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl",
-          report.kind === "damage" ? "bg-clay/12 text-clay" : "bg-secondary text-muted-foreground"
-        )}
-      >
-        <Icon className="size-[17px]" />
-      </span>
+      <Icon
+        className={cn("mt-0.5 size-[18px] shrink-0", report.kind === "damage" ? "text-warning" : "text-muted-foreground")}
+        strokeWidth={1.6}
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className="line-clamp-2 text-sm leading-snug font-medium">{report.title}</p>
@@ -58,7 +54,7 @@ export function ReportRow({ report, eventName }: { report: Report; eventName?: s
           )}
         </div>
       </div>
-      <ChevronRight className="mt-2 size-4 shrink-0 text-muted-foreground/60" />
+      <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
     </Link>
   )
 }

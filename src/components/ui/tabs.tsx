@@ -16,7 +16,7 @@ function Tabs({
   )
 }
 
-/* Segmented control: a sliding white pill on a grey track. */
+/* Underline tabs on a full-width 1px rule; the indicator is a 2px line in ink. */
 function TabsList({
   className,
   ...props
@@ -25,7 +25,7 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        "flex w-full items-stretch gap-1 overflow-x-auto rounded-xl bg-secondary p-1 [scrollbar-width:none]",
+        "flex w-full items-stretch gap-6 overflow-x-auto border-b px-4 [scrollbar-width:none]",
         className
       )}
       {...props}
@@ -41,7 +41,7 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "inline-flex h-9 flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[13px] font-semibold whitespace-nowrap text-muted-foreground transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_3px_oklch(0_0_0/0.1)] [&_svg]:size-4",
+        "relative -mb-px inline-flex h-11 shrink-0 items-center gap-1.5 border-b-2 border-transparent text-sm font-medium whitespace-nowrap text-muted-foreground transition-[color,border-color] outline-none focus-visible:text-foreground data-[state=active]:border-ink data-[state=active]:text-foreground [&_svg]:size-4",
         className
       )}
       {...props}

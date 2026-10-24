@@ -136,9 +136,9 @@ export function PhaseCompleteSheet({
 
 function Stat({ value, label, warn }: { value: number; label: string; warn?: boolean }) {
   return (
-    <div className={warn ? "rounded-2xl bg-warning/15 py-3" : "rounded-2xl bg-secondary py-3"}>
-      <div className="text-xl font-bold tabular">{value}</div>
-      <div className="text-[11px] text-muted-foreground">{label}</div>
+    <div className={warn ? "rounded-md bg-pill-warning py-3 text-pill-warning-ink" : "rounded-md bg-secondary py-3"}>
+      <div className="text-xl font-semibold tabular">{value}</div>
+      <div className="text-[12px] text-muted-foreground">{label}</div>
     </div>
   )
 }

@@ -14,14 +14,14 @@ export function SyncStatus({ className, dark }: { className?: string; dark?: boo
     <div
       role="status"
       className={cn(
-        "flex items-center gap-2 px-4 py-2 text-[12px] font-medium",
+        "flex items-center gap-2 px-4 py-2 text-[13px] font-medium",
         online
           ? dark
-            ? "bg-white/10 text-white/80"
-            : "bg-accent text-accent-foreground"
+            ? "bg-white/10 text-white"
+            : "bg-brand-soft text-brand-ink"
           : dark
-            ? "bg-warning/20 text-[oklch(0.88_0.1_75)]"
-            : "bg-warning/15 text-[oklch(0.45_0.1_60)]",
+            ? "bg-[#3a2a10] text-[#fcd34d]"
+            : "bg-pill-warning text-pill-warning-ink",
         className
       )}
     >

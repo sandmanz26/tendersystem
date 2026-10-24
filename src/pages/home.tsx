@@ -1,9 +1,9 @@
 import * as React from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight, Bell, CalendarX2, ChevronRight, Clock, MapPin, ScanLine, Users } from "lucide-react"
+import { CalendarX2, ChevronRight, Clock, MapPin, ScanLine, Users } from "lucide-react"
 
+import { ManifestGrid } from "@/components/manifest-grid"
 import { PhaseTrack } from "@/components/phase-track"
-import { ProgressRing } from "@/components/progress-ring"
 import { EmptyState, SectionLabel } from "@/components/section"
 import { TopBar } from "@/components/top-bar"
 import { Badge } from "@/components/ui/badge"
@@ -18,9 +18,10 @@ import { inMinutes, nowAndNext } from "@/lib/rundown"
 import { cn } from "@/lib/utils"
 import { useAppStore } from "@/store/app-store"
 
+/* Question: what do I have to do right now, and how much is left? */
 export function HomePage() {
   const store = useAppStore()
-  const { events, reports, userId } = store
+  const { events, userId } = store
   const [tab, setTab] = React.useState<"upcoming" | "done">("upcoming")
 
   const mine = events
@@ -33,7 +34,6 @@ export function HomePage() {
     .sort((a, b) => Math.abs(dayDiff(a.date)) - Math.abs(dayDiff(b.date)))
   const upcoming = mine.filter((e) => !isClosed(e) && !active.includes(e))
   const done = mine.filter(isClosed).reverse()
-  const openReports = reports.filter((r) => r.status !== "Resolved" && mine.some((e) => e.id === r.eventId))
   const [hero, ...otherActive] = active
 
   const me = getPerson(userId)!
@@ -45,22 +45,8 @@ export function HomePage() {
       <TopBar
         large
         back={false}
-        subtitle={today}
-        title={`Hi, ${me.name.split(" ")[0]}`}
-        right={
-          <Link
-            to="/reports"
-            aria-label={`${openReports.length} active reports`}
-            className="relative flex size-10 items-center justify-center rounded-full bg-card shadow-soft"
-          >
-            <Bell className="size-[18px]" />
-            {openReports.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-background">
-                {openReports.length}
-              </span>
-            )}
-          </Link>
-        }
+        title="Today"
+        subtitle={`${today} · ${me.name}`}
       />
 
       {hero ? (
@@ -74,19 +60,23 @@ export function HomePage() {
       {otherActive.length > 0 && (
         <>
           <SectionLabel>Also live</SectionLabel>
-          <div className="flex flex-col gap-3 px-4">
+          <div className="list-card">
             {otherActive.map((e) => (
-              <ActiveCard key={e.id} event={e} progress={getEventProgress(e, store)} />
+              <ActiveRow key={e.id} event={e} progress={getEventProgress(e, store)} />
             ))}
           </div>
         </>
       )}
 
       <div className="flex items-center justify-between px-4 pt-7 pb-3">
-        <h2 className="text-lg font-bold tracking-tight">Schedule</h2>
+        <h2 className="text-[15px] font-semibold">Schedule</h2>
         <ToggleGroup type="single" value={tab} onValueChange={(v) => v && setTab(v as typeof tab)}>
-          <ToggleGroupItem value="upcoming">Upcoming</ToggleGroupItem>
-          <ToggleGroupItem value="done">Done</ToggleGroupItem>
+          <ToggleGroupItem value="upcoming">
+            Upcoming <span className="tabular text-muted-foreground">{upcoming.length}</span>
+          </ToggleGroupItem>
+          <ToggleGroupItem value="done">
+            Done <span className="tabular text-muted-foreground">{done.length}</span>
+          </ToggleGroupItem>
         </ToggleGroup>
       </div>
 
@@ -111,107 +101,93 @@ export function HomePage() {
 
 function HeroCard({ event, progress }: { event: WeddingEvent; progress: PhaseProgress | null }) {
   const phase = PHASES[event.phaseIndex]
-  const cleared = progress ? progress.scanned + progress.reported : 0
-  const pct = progress
-    ? phase.requiresScan
-      ? (cleared / progress.total) * 100
-      : (progress.tasksDone.length / (phase.tasks?.length || 1)) * 100
-    : 0
   const { next, minutesToNext } = nowAndNext(event)
+  if (!phase || !progress) return null
+
+  const left = phase.requiresScan ? progress.pending.length : (phase.tasks?.length ?? 0) - progress.tasksDone.length
+  const noun = phase.requiresScan ? (left === 1 ? "item to scan" : "items to scan") : left === 1 ? "task left" : "tasks left"
 
   return (
-    <article className="overflow-hidden rounded-3xl bg-ink text-white shadow-[0_20px_40px_-20px_oklch(0.2_0.01_265/0.7)]">
-      <Link to={`/event/${event.id}`} className="block p-5 active:opacity-90">
-        <div className="flex items-center gap-2 text-[12px] font-medium text-white/60">
-          <span className="flex items-center gap-1.5 rounded-full bg-[oklch(0.82_0.14_158)]/15 px-2 py-0.5 font-semibold text-[oklch(0.85_0.13_158)]">
-            <span className="size-1.5 animate-pulse rounded-full bg-[oklch(0.85_0.13_158)]" />
-            Live
-          </span>
+    <article className="rounded-xl edge">
+      <Link to={`/event/${event.id}`} className="block px-4 pt-4 active:bg-secondary/50">
+        <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+          <Badge variant="accent">Live</Badge>
           {relativeDay(event.date)} · {event.kind}
         </div>
-        <div className="mt-3 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-[26px] leading-tight font-bold tracking-tight">{event.couple}</h3>
-            <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-white/60">
-              <MapPin className="size-3.5 shrink-0" />
-              <span className="truncate">{event.venue.name}, {event.venue.area}</span>
-            </p>
-          </div>
-          {phase && (
-            <ProgressRing
-              value={pct}
-              size={60}
-              stroke={6}
-              trackClassName="stroke-white/12"
-              barClassName="stroke-[oklch(0.82_0.14_158)]"
-            >
-              <span className="text-[13px] font-bold tabular">{Math.round(pct)}%</span>
-            </ProgressRing>
-          )}
-        </div>
-        <PhaseTrack index={event.phaseIndex} tone="dark" className="mt-5" />
+        <h2 className="mt-2 text-[20px] leading-tight font-semibold">{event.couple}</h2>
+        <p className="mt-1 flex items-center gap-1.5 text-[14px] text-muted-foreground">
+          <MapPin className="size-3.5 shrink-0" />
+          <span className="truncate">
+            {event.venue.name}, {event.venue.area}
+          </span>
+        </p>
       </Link>
 
-      {phase && progress && (
-        <div className="mx-2 mb-2 flex items-center gap-3 rounded-2xl bg-white/[0.07] p-3 pl-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-white/50">Phase {event.phaseIndex + 1}/{PHASES.length}</p>
-            <p className="truncate text-sm font-semibold">{phase.label}</p>
-            <p className="truncate text-[12px] text-white/60 tabular">
-              {phase.requiresScan
-                ? `${cleared} of ${progress.total} items`
-                : `${progress.tasksDone.length} of ${phase.tasks?.length ?? 0} checklist items`}
-            </p>
-          </div>
-          <Button asChild variant={phase.requiresScan ? "brand" : "secondary"} className="shrink-0 rounded-xl">
+      <div className="mt-4 border-t border-rule px-4 pt-4">
+        <p className="text-[13px] text-muted-foreground">
+          {phase.label} · phase {event.phaseIndex + 1} of {PHASES.length}
+        </p>
+        <div className="mt-1 flex items-end justify-between gap-3">
+          <p className="flex items-baseline gap-2">
+            <span className="text-[36px] leading-none font-semibold tracking-[-0.02em] tabular">{left}</span>
+            <span className="text-[15px] text-muted-foreground">{noun}</span>
+          </p>
+          <Button asChild size="default" className="shrink-0">
             <Link to={phase.requiresScan ? `/scan/${event.id}` : `/event/${event.id}`}>
-              {phase.requiresScan ? <ScanLine /> : null}
-              {phase.requiresScan ? "Scan" : "Checklist"}
-              {!phase.requiresScan && <ArrowRight />}
+              {phase.requiresScan && <ScanLine />}
+              {phase.requiresScan ? "Scan" : "Open checklist"}
             </Link>
           </Button>
         </div>
-      )}
+        {phase.requiresScan ? (
+          <ManifestGrid progress={progress} codes={event.assetCodes} className="mt-4" />
+        ) : (
+          <p className="mt-2 text-[14px] text-muted-foreground tabular">
+            {progress.tasksDone.length} of {phase.tasks?.length ?? 0} done
+          </p>
+        )}
+        <PhaseTrack index={event.phaseIndex} className="mt-4 pb-4" />
+      </div>
 
       {next && (
-        <div className="flex items-center gap-2 border-t border-white/8 px-5 py-3 text-[12.5px]">
-          <Clock className="size-3.5 text-white/50" />
-          <span className="text-white/50">Next</span>
-          <span className="min-w-0 flex-1 truncate font-medium">
-            {next.time} · {next.label}
+        <div className="flex items-center gap-2 border-t border-rule px-4 py-3 text-[14px]">
+          <Clock className="size-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate">
+            <span className="text-muted-foreground">Next </span>
+            <span className="tabular">{next.time}</span> {next.label}
           </span>
-          <span className="shrink-0 text-white/50">{inMinutes(minutesToNext!)}</span>
+          <span className="shrink-0 text-[13px] text-muted-foreground tabular">{inMinutes(minutesToNext!)}</span>
         </div>
       )}
     </article>
   )
 }
 
-function ActiveCard({ event, progress }: { event: WeddingEvent; progress: PhaseProgress | null }) {
+function ActiveRow({ event, progress }: { event: WeddingEvent; progress: PhaseProgress | null }) {
   const phase = PHASES[event.phaseIndex]
-  const cleared = progress ? progress.scanned + progress.reported : 0
-  const pct = progress && phase.requiresScan ? (cleared / progress.total) * 100 : 0
   return (
     <Link
       to={phase?.requiresScan ? `/scan/${event.id}` : `/event/${event.id}`}
-      className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-soft active:scale-[0.99]"
+      className="block px-4 py-3.5 active:bg-secondary"
     >
-      <ProgressRing value={pct} size={48} stroke={5}>
-        <ScanLine className="size-4 text-muted-foreground" />
-      </ProgressRing>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{event.couple}</p>
-        <p className="truncate text-[13px] text-muted-foreground">
-          {relativeDay(event.date)} · {phase?.label}
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-semibold">{event.couple}</p>
+          <p className="truncate text-[13px] text-muted-foreground">
+            {relativeDay(event.date)} · {phase?.label}
+          </p>
+        </div>
+        {progress && phase.requiresScan && (
+          <span className="text-[15px] font-semibold tabular">
+            {progress.pending.length}
+            <span className="font-normal text-muted-foreground"> to scan</span>
+          </span>
+        )}
+        <ChevronRight className="size-4 text-muted-foreground" />
       </div>
       {progress && phase.requiresScan && (
-        <span className="text-sm font-semibold tabular">
-          {cleared}
-          <span className="text-muted-foreground">/{progress.total}</span>
-        </span>
+        <ManifestGrid progress={progress} codes={event.assetCodes} legend={false} className="mt-3 [&>div>span]:h-3" />
       )}
-      <ChevronRight className="size-4 text-muted-foreground/50" />
     </Link>
   )
 }
@@ -220,38 +196,38 @@ function EventRow({ event }: { event: WeddingEvent }) {
   const closed = isClosed(event)
   const soon = !closed && dayDiff(event.date) <= 1
   return (
-    <Link to={`/event/${event.id}`} className="flex items-center gap-3.5 px-4 py-3.5 active:bg-muted">
+    <Link to={`/event/${event.id}`} className="flex items-center gap-3.5 px-4 py-3.5 active:bg-secondary">
       <div
         className={cn(
-          "flex w-12 shrink-0 flex-col items-center rounded-xl py-1.5 leading-none",
-          soon ? "bg-ink text-white" : "bg-secondary"
+          "flex w-12 shrink-0 flex-col items-center rounded-md py-1.5 leading-none",
+          soon ? "bg-brand-soft text-brand-ink" : "bg-secondary"
         )}
       >
-        <span className={cn("text-[10px] font-semibold uppercase", soon ? "text-white/60" : "text-muted-foreground")}>
+        <span className={cn("text-[12px] font-medium", soon ? "text-brand-ink" : "text-muted-foreground")}>
           {formatDate(event.date, { month: "short" })}
         </span>
-        <span className="mt-1 text-lg font-bold tabular">{formatDate(event.date, { day: "numeric" })}</span>
+        <span className="mt-1 text-lg font-semibold tabular">{formatDate(event.date, { day: "numeric" })}</span>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{event.couple}</p>
+        <p className="truncate text-[15px] font-semibold">{event.couple}</p>
         <p className="truncate text-[13px] text-muted-foreground">
           {event.kind} · {event.venue.name}
         </p>
-        <p className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-          <span className={cn(soon && "font-semibold text-foreground")}>{relativeDay(event.date)}</span>
+        <p className="mt-1 flex items-center gap-3 text-[13px] text-muted-foreground">
+          <span className={cn(soon && "font-medium text-foreground")}>{relativeDay(event.date)}</span>
           <span className="flex items-center gap-1">
-            <Users className="size-3" />
+            <Users className="size-3.5" />
             {event.crew.length}
           </span>
           {!closed && (
             <span className="flex items-center gap-1 tabular">
-              <Clock className="size-3" />
-              {event.callTime}
+              <Clock className="size-3.5" />
+              Call {event.callTime}
             </span>
           )}
         </p>
       </div>
-      {closed ? <Badge variant="muted">Done</Badge> : <ChevronRight className="size-4 text-muted-foreground/50" />}
+      {closed ? <Badge variant="muted">Done</Badge> : <ChevronRight className="size-4 text-muted-foreground" />}
     </Link>
   )
 }

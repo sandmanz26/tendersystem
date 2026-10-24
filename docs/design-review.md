@@ -1,0 +1,62 @@
+# Design review: taste-skill pass
+
+The UI was reworked with [taste-skill](https://github.com/Leonxlnx/taste-skill) (`design-taste-frontend`), following its **app-screen** run (`references/app-screens.md`), since Kru is a tool people work in rather than a page they read.
+
+## Decisions
+
+| | |
+|---|---|
+| Style | `accent-ladder`, kind `community`, light, seed 1493120158. Chosen because Kru is glanced at on a phone in the field, and colour has to mean something (scanned, pending, at risk), not decorate. `framed-sheet` is a desktop sidebar shell; `achromatic-ledger` is built for money screens. |
+| Hue | The dealt raspberry `#b8336a`, kept: it suits a wedding organiser and replaces the generic emerald. |
+| Face | The page ground tinted one level toward the hue (`#fbf7f8`), so the page and the tints read as one family. |
+| Signature element | **Manifest grid**: one cell per manifest line. Filled = scanned, hatched = reported damaged/missing, amber = scanned but skipped a checkpoint, empty = still to scan. Replaces the progress rings. |
+| Type | DM Sans (dealt), loaded locally so it works offline. Geist Mono kept for asset IDs only (allowed on app screens). |
+| Home's question | "What do I have to do right now, and how much is left?" The largest figure on the screen (36px) is the number of items left at the current checkpoint. |
+
+## What changed
+
+- Shadows on every card and button → 1px borders; the only shadows left are on the dialog and the bottom sheet, which really float.
+- Floating glass pill nav with a raised scan button → a plain bottom bar; one filled button per screen.
+- Dark hero card ("green on black") → a white card led by the answer figure and the manifest grid.
+- Seven-colour tinted icon squares on every inventory row → one grey outline icon set.
+- Terracotta warning colour (failed contrast at 3.2:1) → the warning pill pair `#fffbeb` / `#92400e`.
+- Gradient bottom bars → flat bars with a top border.
+- Segmented tabs on the event page → underline tabs on a 1px rule (the sheet's detail pattern).
+- Numbered crew notes → plain bullets (no index numbering).
+- "In use" pills on most inventory rows → removed; the location is already in the subline. Only "Needs check" keeps a pill.
+- Seven grey "Report" blocks down the scanner list → text actions.
+- The rundown now shows where the day is: past items grey, the current one marked "Now".
+- Nothing under 12px; secondary text 13px. Every grey reaches 4.5:1.
+- Every screen has exactly one `h1`.
+- Disabled buttons stay legible and say why ("3 tasks left before Event Live").
+
+## Measurements
+
+`lint.mjs --app` on `src/`:
+
+| | FAIL | WARN |
+|---|---|---|
+| Before | 2 | 34 |
+| After | 0 | 15 |
+
+The 15 remaining warnings are allowed by the app rules: shadows on the dialog and bottom sheet (real overlays), zero-padding that builds clock times, and monospace on asset IDs.
+
+`inspect.mjs --app` at 390 and 768 px:
+
+| Screen | Before | After |
+|---|---|---|
+| Home | 3 FAIL, 1 WARN | 0 / 0 |
+| Event detail | 2 FAIL, 2 WARN | 0 / 0 |
+| Scanner | 5 FAIL, 2 WARN | 0 / 0 |
+| New report | 4 FAIL, 1 WARN | 0 / 0 |
+| Items | 3 FAIL, 1 WARN | 0 / 0 |
+| Reports | 2 FAIL, 2 WARN | 0 / 0 |
+| Item detail | 3 FAIL, 1 WARN | 0 / 0 |
+| Report detail, scan picker, profile | not measured before | 0 / 0 |
+
+Before-failures were mainly: button shadow/glow, heavy panel shadows, gradients, the terracotta accent, tinted icon chips, missing `h1`, contrast under 4.5:1, and too much text under 13px.
+
+## Not covered
+
+- The inspector's desktop width (1440) was skipped: Kru is a phone app shown in a 440px column on larger screens.
+- Sample data (people, venues, assets, reports) is still mock data in `src/data/mock.ts` and must be replaced with real data.

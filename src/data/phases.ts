@@ -45,8 +45,8 @@ export const PHASES: Phase[] = [
   },
   {
     key: "load_in",
-    label: "Teardown & Load",
-    short: "Teardown",
+    label: "Strike & Load",
+    short: "Strike",
     requiresScan: true,
     hint: "Scan every item as it is loaded back onto the truck.",
   },

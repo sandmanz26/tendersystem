@@ -37,9 +37,9 @@ export function ReportDetailPage() {
 
   return (
     <div>
-      <TopBar title={report.id} subtitle={event.couple} />
+      <TopBar titleAs="p" title={report.id} subtitle={event.couple} />
 
-      <section className="mx-4 mt-2 rounded-3xl bg-card p-5 shadow-soft">
+      <section className="mx-4 mt-4 rounded-xl p-4 edge">
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant={STATUS_VARIANT[report.status]}>{report.status}</Badge>
           <Badge variant="outline">
@@ -54,7 +54,7 @@ export function ReportDetailPage() {
             </Badge>
           )}
         </div>
-        <h1 className="mt-3 text-xl leading-snug font-bold tracking-tight">{report.title}</h1>
+        <h1 className="mt-3 text-[20px] leading-snug font-bold">{report.title}</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-foreground/85">{report.description}</p>
 
         {report.photos.length > 0 && (
@@ -84,10 +84,10 @@ export function ReportDetailPage() {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{asset.name}</p>
               <p className="truncate text-xs text-muted-foreground">
-                <span className="font-mono text-[11px]">{asset.code}</span> · {asset.location}
+                <span className="font-mono text-[12px]">{asset.code}</span> · {asset.location}
               </p>
             </div>
-            <ChevronRight className="size-4 text-muted-foreground/60" />
+            <ChevronRight className="size-4 text-muted-foreground" />
           </Link>
         </>
       )}
@@ -111,7 +111,7 @@ export function ReportDetailPage() {
           const person = getPerson(u.by)!
           return (
             <li key={i} className="flex gap-3 py-3">
-              <PersonAvatar person={person} className="size-7 text-[10px]" />
+              <PersonAvatar person={person} className="size-7 text-[12px]" />
               <div className="min-w-0 flex-1">
                 <p className="text-[13px]">
                   <span className="font-medium">{personName(u.by)}</span>

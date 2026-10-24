@@ -10,8 +10,8 @@ export function SectionLabel({
   className?: string
 }) {
   return (
-    <div className={cn("flex items-center justify-between px-5 pt-6 pb-2", className)}>
-      <h2 className="text-[13px] font-semibold text-muted-foreground">{children}</h2>
+    <div className={cn("flex items-center justify-between px-4 pt-6 pb-2", className)}>
+      <h2 className="text-[15px] font-semibold text-foreground">{children}</h2>
       {action}
     </div>
   )
@@ -32,9 +32,7 @@ export function EmptyState({
 }) {
   return (
     <div className={cn("flex flex-col items-center px-8 py-12 text-center", className)}>
-      <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-card text-muted-foreground shadow-soft">
-        <Icon className="size-6" />
-      </div>
+      <Icon className="mb-3 size-6 text-muted-foreground" />
       <p className="text-[15px] font-semibold">{title}</p>
       {body && <p className="mt-1 max-w-[260px] text-[13px] text-muted-foreground">{body}</p>}
       {action && <div className="mt-5">{action}</div>}
@@ -75,11 +73,11 @@ export function Callout({
   return (
     <div
       className={cn(
-        "flex gap-3 rounded-2xl px-4 py-3 text-[13px] leading-snug",
-        tone === "warning" && "bg-warning/15 text-[oklch(0.4_0.08_60)]",
-        tone === "info" && "bg-secondary text-foreground/80",
-        tone === "danger" && "bg-destructive/10 text-destructive",
-        tone === "success" && "bg-accent text-accent-foreground",
+        "flex gap-3 rounded-xl px-3.5 py-3 text-[14px] leading-snug",
+        tone === "warning" && "border border-[#fde68a] bg-pill-warning text-pill-warning-ink",
+        tone === "info" && "bg-secondary text-foreground",
+        tone === "danger" && "bg-pill-negative text-pill-negative-ink",
+        tone === "success" && "bg-brand-soft text-brand-ink",
         className
       )}
     >

@@ -202,20 +202,13 @@ export function ReportNewPage() {
                 setCategory("")
               }}
               className={cn(
-                "flex flex-col items-start gap-3 rounded-2xl bg-card p-4 text-left shadow-soft transition-all",
-                kind === value && "ring-2 ring-ink"
+                "flex flex-col items-start gap-3 rounded-xl border border-input bg-card p-4 text-left transition-[color,background-color,border-color]",
+                kind === value && "border-brand bg-brand-soft"
               )}
             >
-              <span
-                className={cn(
-                  "flex size-9 items-center justify-center rounded-xl",
-                  value === "damage" ? "bg-clay/12 text-clay" : "bg-secondary"
-                )}
-              >
-                <Icon className="size-[18px]" />
-              </span>
+              <Icon className={cn("size-5", value === "damage" ? "text-warning" : "text-muted-foreground")} strokeWidth={1.6} />
               <span>
-                <span className="block text-sm font-bold">{label}</span>
+                <span className="block text-[15px] font-semibold">{label}</span>
                 <span className="block text-xs text-muted-foreground">{hint}</span>
               </span>
             </button>
@@ -253,7 +246,7 @@ export function ReportNewPage() {
                   <CategoryIcon category={asset.category} className="size-9" />
                   <span className="min-w-0">
                     <span className="block truncate font-semibold">{asset.name}</span>
-                    <span className="block truncate font-mono text-[11px] text-muted-foreground">{asset.code}</span>
+                    <span className="block truncate font-mono text-[12px] text-muted-foreground">{asset.code}</span>
                   </span>
                 </span>
               ) : (
@@ -285,7 +278,7 @@ export function ReportNewPage() {
         </Field>
 
         <Field label="Urgency">
-          <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
+          <div className="grid grid-cols-3 gap-1 rounded-md bg-secondary p-1">
             {SEVERITIES.map((s) => (
               <button
                 key={s}
@@ -293,14 +286,14 @@ export function ReportNewPage() {
                 aria-pressed={severity === s}
                 onClick={() => setSeverity(s)}
                 className={cn(
-                  "flex h-9 items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold text-muted-foreground transition-all",
-                  severity === s && "bg-card text-foreground shadow-[0_1px_3px_oklch(0_0_0/0.1)]"
+                  "flex h-9 items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold text-muted-foreground transition-[color,background-color,border-color]",
+                  severity === s && "bg-card text-foreground ring-1 ring-border"
                 )}
               >
                 <span
                   className={cn(
                     "size-2 rounded-full",
-                    s === "Low" && "bg-muted-foreground/40",
+                    s === "Low" && "bg-[#9ca3af]",
                     s === "Medium" && "bg-warning",
                     s === "High" && "bg-destructive"
                   )}
@@ -346,7 +339,7 @@ export function ReportNewPage() {
         <Field label={`Photos (${photos.length}/${MAX_PHOTOS})`}>
           <div className="grid grid-cols-4 gap-2">
             {photos.map((src, i) => (
-              <div key={i} className="relative aspect-square overflow-hidden rounded-xl shadow-soft">
+              <div key={i} className="relative aspect-square overflow-hidden rounded-md edge">
                 <img src={src} alt={`Photo ${i + 1}`} className="size-full object-cover" />
                 <button
                   type="button"
@@ -359,7 +352,7 @@ export function ReportNewPage() {
               </div>
             ))}
             {processing && (
-              <div className="flex aspect-square items-center justify-center rounded-xl bg-card shadow-soft">
+              <div className="flex aspect-square items-center justify-center rounded-md edge">
                 <Loader2 className="size-5 animate-spin text-muted-foreground" />
               </div>
             )}
@@ -376,7 +369,7 @@ export function ReportNewPage() {
         </Field>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[440px] bg-gradient-to-t from-background via-background to-transparent px-4 pt-6 pb-[max(env(safe-area-inset-bottom),14px)]">
+      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[440px] border-t bg-card px-4 pt-3 pb-[max(env(safe-area-inset-bottom),14px)]">
         <Button type="submit" size="lg" className="w-full" disabled={submitting || processing}>
           {submitting ? <Loader2 className="animate-spin" /> : null}
           {online ? "Send report" : "Save report"}
@@ -469,7 +462,7 @@ function Field({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <Label className={cn(error && "text-destructive")}>{label}</Label>
-        {hint && <span className="text-[11px] text-muted-foreground tabular">{hint}</span>}
+        {hint && <span className="text-[12px] text-muted-foreground tabular">{hint}</span>}
       </div>
       {children}
       {error && <p className="text-xs font-medium text-destructive">{error}</p>}
@@ -486,7 +479,7 @@ function PickerButton({
     <button
       type="button"
       className={cn(
-        "flex min-h-14 w-full items-center justify-between gap-3 rounded-xl bg-card px-3.5 py-2 text-left text-sm shadow-soft disabled:opacity-50",
+        "flex min-h-14 w-full items-center justify-between gap-3 rounded-md border border-input bg-card px-3.5 py-2 text-left text-sm disabled:text-muted-foreground",
         invalid && "ring-2 ring-destructive"
       )}
       {...props}
@@ -509,7 +502,7 @@ function PhotoInput({
   onFiles: (files: FileList | null) => void
 }) {
   return (
-    <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-input bg-card/60 text-[11px] font-medium text-muted-foreground active:bg-muted">
+    <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[#9ca3af] bg-card text-[12px] font-medium text-muted-foreground active:bg-muted">
       <Icon className="size-5" />
       {label}
       <input
@@ -571,7 +564,7 @@ function AssetPicker({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{a.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    <span className="font-mono text-[11px]">{a.code}</span> · {a.unit}
+                    <span className="font-mono text-[12px]">{a.code}</span> · {a.unit}
                   </span>
                 </span>
                 {a.code === value && <Check className="size-4 text-brand" />}

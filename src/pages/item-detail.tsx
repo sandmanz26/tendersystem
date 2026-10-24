@@ -45,15 +45,15 @@ export function ItemDetailPage() {
 
   return (
     <div>
-      <TopBar title={asset.name} subtitle={event ? event.couple : "Inventory"} />
+      <TopBar titleAs="p" title={asset.name} subtitle={event ? event.couple : "Inventory"} />
 
       <section className="px-4 pt-2">
-        <div className="rounded-3xl bg-card p-5 shadow-soft">
+        <div className="rounded-xl p-4 edge">
           <div className="flex items-start gap-4">
-            <CategoryIcon category={asset.category} className="size-16 rounded-2xl [&_svg]:size-7" />
+            <CategoryIcon category={asset.category} className="size-14 rounded-md bg-secondary [&_svg]:size-7" />
             <div className="min-w-0 flex-1">
               <p className="font-mono text-xs text-muted-foreground">{asset.code}</p>
-              <h1 className="mt-0.5 text-xl leading-tight font-bold tracking-tight">{asset.name}</h1>
+              <h1 className="mt-0.5 text-[20px] leading-tight font-bold">{asset.name}</h1>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <Badge variant="secondary">{asset.category}</Badge>
                 <Badge variant={conditionVariant}>{asset.condition}</Badge>
@@ -62,7 +62,7 @@ export function ItemDetailPage() {
           </div>
           <div
             className={cn(
-              "mt-4 flex items-center gap-3 rounded-2xl px-3.5 py-3",
+              "mt-4 flex items-center gap-3 rounded-md px-3.5 py-3",
               where.at === "warehouse" ? "bg-secondary" : "bg-accent"
             )}
           >
@@ -112,10 +112,10 @@ export function ItemDetailPage() {
                 <li key={p.key} className="flex items-center gap-3 px-4 py-3">
                   {st.state === "scanned" ? (
                     <CircleCheck
-                      className={cn("size-5 shrink-0", st.record.skippedPrevious ? "text-clay" : "text-brand")}
+                      className={cn("size-5 shrink-0", st.record.skippedPrevious ? "text-warning" : "text-brand")}
                     />
                   ) : st.state === "reported" ? (
-                    <TriangleAlert className="size-5 shrink-0 text-clay" />
+                    <TriangleAlert className="size-5 shrink-0 text-warning" />
                   ) : (
                     <CircleDashed
                       className={cn("size-5 shrink-0", isCurrent ? "text-foreground" : "text-muted-foreground/40")}
@@ -131,7 +131,7 @@ export function ItemDetailPage() {
                       </p>
                     )}
                     {st.state === "reported" && (
-                      <p className="text-xs text-clay">Reported: {st.report.category}</p>
+                      <p className="text-xs text-warning">Reported: {st.report.category}</p>
                     )}
                   </div>
                   {isCurrent && st.state === "pending" && <Badge variant="outline">Awaiting scan</Badge>}
@@ -158,7 +158,7 @@ export function ItemDetailPage() {
                   </span>
                 </span>
                 {e.id === event?.id && <Badge variant="secondary">This event</Badge>}
-                <ChevronRight className="size-4 text-muted-foreground/50" />
+                <ChevronRight className="size-4 text-muted-foreground" />
               </Link>
             </li>
           ))}
@@ -179,7 +179,7 @@ export function ItemDetailPage() {
       )}
 
       <div className="px-4 pt-6 pb-4">
-        <Button asChild variant="outline" size="lg" className="w-full text-clay">
+        <Button asChild variant="outline" size="lg" className="w-full text-warning">
           <Link
             to={`/new-report?type=damage&asset=${asset.code}${event ? `&event=${event.id}` : where.at === "event" ? `&event=${where.event.id}` : ""}`}
           >

@@ -20,17 +20,26 @@ npm run build
 | Report damaged/missing items | From the scanner (*Report* button), the item page, or the report form |
 | Who's involved | **Team** tab: in-house crew (lead marked) + vendors, with WhatsApp/call buttons |
 
+## Design
+
+The UI follows the [taste-skill](https://github.com/Leonxlnx/taste-skill) app-screen rules, style **accent-ladder** (seed 1493120158). See [`docs/design-review.md`](docs/design-review.md) for the decisions and the before/after measurements.
+
+- One raspberry hue (`--brand: #b8336a`) at full strength on small marks only: the one filled button per screen, scanned cells, the active nav icon. Its pale tints (`--brand-soft`, `--brand-track`) do the area work.
+- DM Sans for everything; Geist Mono for asset IDs only.
+- Surfaces are separated by a 1px border, never a resting shadow. 8px cards, 6px controls. No gradients, blur, or glows.
+- The **manifest grid** (`src/components/manifest-grid.tsx`) is the product's own element: one cell per crate or pallet, filled when scanned, hatched when reported, empty while pending.
+
 ## Research & negative cases
 
 See [`docs/research-and-negative-cases.md`](docs/research-and-negative-cases.md) for the research findings, what v0.2 added, and the full negative-case matrix.
 
 ## Phases & scan gate
 
-`Warehouse Load-out → Venue Arrival → Setup & Decor → Event Live → Teardown & Load → Warehouse Return`
+`Warehouse Load-out → Venue Arrival → Setup & Decor → Event Live → Strike & Load → Warehouse Return`
 
 Setup & Event Live each have a **checklist** that must be complete. Load-out and Return need a **warehouse admin signature**. Offline mode can be tried from Profile → *Simulate no signal*.
 
-Scan phases (Load-out, Arrival, Teardown, Return) **can't be completed** until every item on the event's manifest is scanned. Damaged or missing items can be *reported* from the scanner. That report stands in for the scan in that phase, so one broken crate doesn't hold up the whole crew, but it stays on record.
+Scan phases (Load-out, Arrival, Strike, Return) **can't be completed** until every item on the event's manifest is scanned. Damaged or missing items can be *reported* from the scanner. That report stands in for the scan in that phase, so one broken crate doesn't hold up the whole crew, but it stays on record.
 
 The scanner supports:
 - **Camera** via `BarcodeDetector` (Chrome on Android). The button is disabled on unsupported browsers.

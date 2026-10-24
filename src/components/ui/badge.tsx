@@ -5,17 +5,18 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-3",
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-full border px-2 py-0.5 text-[12px] font-medium whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-3",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
-        outline: "text-foreground",
-        success: "border-transparent bg-accent text-accent-foreground",
-        warning: "border-transparent bg-warning/18 text-[oklch(0.48_0.11_60)]",
-        destructive: "border-transparent bg-destructive/10 text-destructive",
-        muted: "border-transparent bg-muted text-muted-foreground",
+        default: "border-transparent bg-brand text-white",
+        secondary: "border-transparent bg-secondary text-[#374151]",
+        outline: "border-border text-foreground",
+        success: "border-transparent bg-pill-positive text-pill-positive-ink",
+        warning: "border-transparent bg-pill-warning text-pill-warning-ink",
+        destructive: "border-transparent bg-pill-negative text-pill-negative-ink",
+        muted: "border-transparent bg-secondary text-[#374151]",
+        accent: "border-transparent bg-brand-soft text-brand-ink",
       },
     },
     defaultVariants: { variant: "default" },
