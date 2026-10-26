@@ -41,6 +41,7 @@ import { useAppStore } from "@/store/app-store"
 import { NotFound } from "./not-found"
 
 const TABS = ["info", "items", "team", "reports"] as const
+const TOP_BAR_HEIGHT = 57
 type Tab = (typeof TABS)[number]
 
 export function EventDetailPage() {
@@ -48,6 +49,24 @@ export function EventDetailPage() {
   const store = useAppStore()
   const { events, reports, userId } = store
   const [params, setParams] = useSearchParams()
+  const tabsAnchor = React.useRef<HTMLDivElement>(null)
+  // On a phone the header and phase panel fill the first screen, so a chosen
+  // tab scrolls its content up under the sticky top bar.
+  const scrollToTabs = React.useCallback((smooth: boolean) => {
+    const el = tabsAnchor.current
+    if (!el) return
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const top = el.getBoundingClientRect().top + window.scrollY - TOP_BAR_HEIGHT
+    window.scrollTo({ top, behavior: smooth && !reduced ? "smooth" : "auto" })
+  }, [])
+  React.useEffect(() => {
+    // Deep link to a tab (e.g. from a report): open at the tab, not the header.
+    const deepTab = params.get("tab")
+    if (deepTab && deepTab !== "info") requestAnimationFrame(() => scrollToTabs(false))
+    // Only on arrival; later switches scroll from onValueChange.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
   const event = events.find((e) => e.id === id)
   if (!event) return <NotFound />
 
@@ -72,7 +91,8 @@ export function EventDetailPage() {
         <div className="min-w-0 flex-1">
           <h1 className="text-[22px] leading-tight font-bold tracking-[-0.01em] text-balance">{event.couple}</h1>
           <p className="mt-1 text-[14px] text-muted-foreground">
-            {event.kind} · {event.guests} guests · {event.theme}
+            {event.kind} · <span className="tabular">{event.guests}</span> guests
+            <span className="block">{event.theme}</span>
           </p>
           <dl className="mt-2.5 flex gap-5 text-[14px]">
             <Fact label="Call" value={event.callTime} />
@@ -91,10 +111,14 @@ export function EventDetailPage() {
       <NowNext event={event} />
       <PhasePanel event={event} progress={progress} canAct={assigned} />
 
+      <div ref={tabsAnchor} className="mt-5" />
       <Tabs
         value={tab}
-        onValueChange={(v) => setParams({ tab: v }, { replace: true })}
-        className="mt-5 gap-0"
+        onValueChange={(v) => {
+          setParams({ tab: v }, { replace: true })
+          requestAnimationFrame(() => scrollToTabs(true))
+        }}
+        className="gap-0"
       >
         <div className="sticky top-[57px] z-20 bg-background">
           <TabsList>
@@ -319,9 +343,11 @@ function InfoTab({ event }: { event: WeddingEvent }) {
         <div className="px-4 py-3.5">
           <p className="font-semibold">{event.venue.name}</p>
           <p className="mt-0.5 text-[13px] text-muted-foreground">{event.venue.address}</p>
-          <Callout icon={Truck} tone="info" className="mt-3 px-3 py-2.5">
-            {event.venue.loadingNote}
-          </Callout>
+          {hasText(event.venue.loadingNote) && (
+            <Callout icon={Truck} tone="info" className="mt-3 px-3 py-2.5">
+              {event.venue.loadingNote}
+            </Callout>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-2 p-3">
           <Button asChild variant="secondary" size="sm">
@@ -594,4 +620,9 @@ function TeamTab({ event }: { event: WeddingEvent }) {
       </p>
     </div>
   )
+}
+
+/** Mock data marks a missing note with a dash; treat that and blanks as absent. */
+function hasText(value?: string) {
+  return !!value && value.trim() !== "" && value.trim() !== "—"
 }

@@ -52,9 +52,22 @@ The 15 remaining warnings are allowed by the app rules: shadows on the dialog an
 | Items | 3 FAIL, 1 WARN | 0 / 0 |
 | Reports | 2 FAIL, 2 WARN | 0 / 0 |
 | Item detail | 3 FAIL, 1 WARN | 0 / 0 |
-| Report detail, scan picker, profile | not measured before | 0 / 0 |
+| Report detail, scan picker, profile, event tabs, closed/future event, 404 | not measured before | 0 / 0 |
 
 Before-failures were mainly: button shadow/glow, heavy panel shadows, gradients, the terracotta accent, tinted icon chips, missing `h1`, contrast under 4.5:1, and too much text under 13px.
+
+## Round 3: critique of every screen
+
+The meter passed everywhere after round 2, so round 3 looked at every screen and tab at 390px against the skill's app-screen questions. Fixed:
+
+- **Event tabs buried their content.** On the Items, Team, and Reports tabs the first row sat about 740px down, under the header and phase panel. Choosing a tab (or opening a link straight to one) now scrolls the content up under the sticky top bar: the first row is now at 171-257px, inside the top 60% the phone rule asks for.
+- **Red as texture.** Every "Open" report was red, and resolved reports kept a red urgency dot. Status now uses one hue at three intensities (Open = the raspberry tint, In progress = amber, Resolved = grey), and a resolved report's urgency dot is grey. Red is left for failures.
+- **An empty callout.** A venue with no loading note showed a truck callout holding only "—"; it is now left out.
+- **The report form defaulted to yesterday's event.** It now picks the event being worked today first.
+- **The 404 page had no `h1`.**
+- **The event header's meta line broke mid-phrase** ("Garden, sage & / ivory"); the theme now has its own line.
+
+Final gate on the final code: `inspect.mjs --app` 0 FAIL / 0 WARN on 17 screen states (every screen, every event tab, a closed and a future event, item inside and outside an event, 404); `lint.mjs --app` 0 FAIL.
 
 ## Not covered
 

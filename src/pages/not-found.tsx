@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 export function NotFound() {
   return (
     <div>
-      <TopBar back="/" />
+      <TopBar back="/" title="Not found" />
       <EmptyState
         icon={SearchX}
         title="Page not found"

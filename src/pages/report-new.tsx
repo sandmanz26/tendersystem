@@ -42,7 +42,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { PHASES } from "@/data/phases"
 import type { ReportKind, Severity } from "@/data/types"
-import { relativeDay } from "@/lib/format"
+import { dayDiff, relativeDay } from "@/lib/format"
 import { getAsset, getPerson } from "@/lib/lookup"
 import { isClosed } from "@/lib/progress"
 import { cn } from "@/lib/utils"
@@ -65,7 +65,10 @@ export function ReportNewPage() {
     .filter((e) => e.crew.some((c) => c.personId === userId))
     .sort((a, b) => Number(isClosed(a)) - Number(isClosed(b)) || a.date.localeCompare(b.date))
 
-  const initialEvent = mine.find((e) => e.id === params.get("event")) ?? mine.find((e) => !isClosed(e))
+  const initialEvent =
+    mine.find((e) => e.id === params.get("event")) ??
+    mine.find((e) => !isClosed(e) && dayDiff(e.date) === 0) ??
+    mine.find((e) => !isClosed(e))
   const initialAsset = params.get("asset") ?? ""
 
   const [kind, setKind] = React.useState<ReportKind>(params.get("type") === "damage" ? "damage" : "issue")

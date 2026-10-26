@@ -43,7 +43,7 @@ export function ReportDetailPage() {
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant={STATUS_VARIANT[report.status]}>{report.status}</Badge>
           <Badge variant="outline">
-            <span className={cn("size-1.5 rounded-full", SEVERITY_DOT[report.severity])} />
+            <span className={cn("size-1.5 rounded-full", report.status === "Resolved" ? "bg-[#9ca3af]" : SEVERITY_DOT[report.severity])} />
             {report.severity} urgency
           </Badge>
           <Badge variant="secondary">{report.kind === "damage" ? "Damaged item" : "Field issue"}</Badge>
