@@ -72,8 +72,8 @@ export function PhaseCompleteSheet({
           <DrawerTitle className="text-lg">Complete {phase.label}</DrawerTitle>
           <DrawerDescription>
             {next
-              ? `The event moves to ${next.label}. A closed phase can't be reopened from the app.`
-              : "All items are back. The event will be closed."}
+              ? `Next: ${next.label} · can't be undone`
+              : "All items back · closes the event"}
           </DrawerDescription>
         </DrawerHeader>
 
@@ -92,8 +92,7 @@ export function PhaseCompleteSheet({
 
           {progress.flagged.length > 0 && (
             <Callout icon={TriangleAlert}>
-              {progress.flagged.length} items weren't recorded at the previous checkpoint. The coordinator
-              will see this note.
+              {progress.flagged.length} skipped the last checkpoint · flagged
             </Callout>
           )}
 
@@ -103,7 +102,6 @@ export function PhaseCompleteSheet({
                 <PenLine className="size-4" />
                 Handover · {phase.handover!.party}
               </div>
-              <p className="-mt-1 text-[13px] text-muted-foreground">{phase.handover!.hint}</p>
               <div className="space-y-2">
                 <Label htmlFor="handover-name">Receiver's name</Label>
                 <Input
@@ -121,11 +119,11 @@ export function PhaseCompleteSheet({
 
         <DrawerFooter>
           <Button size="lg" variant="brand" disabled={!ready || busy} onClick={submit}>
-            {next ? `Done, continue to ${next.label}` : "Close event"}
+            {next ? `Continue to ${next.label}` : "Close event"}
           </Button>
           {needsHandover && !ready && (
             <p className="text-center text-xs text-muted-foreground">
-              Add a name and signature to continue
+              Name + signature needed
             </p>
           )}
         </DrawerFooter>

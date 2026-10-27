@@ -78,7 +78,6 @@ export function ReportNewPage() {
   )
   const [category, setCategory] = React.useState("")
   const [severity, setSeverity] = React.useState<Severity>("Medium")
-  const [title, setTitle] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [photos, setPhotos] = React.useState<string[]>([])
   const [processing, setProcessing] = React.useState(false)
@@ -92,7 +91,7 @@ export function ReportNewPage() {
   const phaseKey = event ? PHASES[Math.min(event.phaseIndex, PHASES.length - 1)].key : undefined
   const lead = event && getPerson(event.crew.find((c) => c.lead)?.personId ?? "")
 
-  const dirty = !!(category || title.trim() || description.trim() || photos.length)
+  const dirty = !!(category || description.trim() || photos.length)
 
   // Warn before a reload/close throws away a half-written report.
   React.useEffect(() => {
@@ -114,14 +113,23 @@ export function ReportNewPage() {
         )
       : undefined
 
-  const autoTitle = kind === "damage" && asset && category ? `${asset.name} · ${category.toLowerCase()}` : ""
   const desc = description.trim()
+  // No title field to fill in: the title is built from what was picked and written.
+  const words = desc.split(/\s+/).filter(Boolean)
+  const title =
+    kind === "damage"
+      ? asset && category
+        ? `${asset.name} · ${category.toLowerCase()}`
+        : ""
+      : category && words.length
+        ? `${category}: ${words.slice(0, 7).join(" ")}${words.length > 7 ? "…" : ""}`
+        : ""
   const errors = {
     event: !event,
     asset: kind === "damage" && !asset,
     category: !category,
-    title: !(title.trim() || autoTitle),
-    description: desc.length < DESC_MIN,
+    // A damage report is already described by its item, condition and photos.
+    description: kind === "issue" ? desc.length < DESC_MIN : desc.length > 0 && desc.length < DESC_MIN,
   }
   const valid = !Object.values(errors).some(Boolean)
   const err = (k: keyof typeof errors) => submitted && errors[k]
@@ -141,7 +149,7 @@ export function ReportNewPage() {
       category,
       assetCode: kind === "damage" ? assetCode : undefined,
       severity,
-      title: title.trim() || autoTitle,
+      title,
       description: desc,
       photos,
     })
@@ -180,22 +188,21 @@ export function ReportNewPage() {
     <form onSubmit={submit} className="flex min-h-dvh flex-col" noValidate>
       <TopBar
         title="New report"
-        subtitle="Goes to the field coordinator"
         onBack={(go) => (dirty ? setLeave(() => go) : go())}
       />
 
       <div className="flex-1 space-y-6 px-4 pt-3 pb-32">
         {!online && (
-          <Callout icon={CloudOff}>You're offline. The report is saved on this phone and sent automatically when signal returns.</Callout>
+          <Callout icon={CloudOff}>Offline. Saved on this phone, sent later.</Callout>
         )}
 
         <div className="grid grid-cols-2 gap-2">
           {(
             [
-              ["issue", "Field issue", "Venue, vendor, transport", TriangleAlert],
-              ["damage", "Damaged item", "Damaged, missing, short", PackageX],
+              ["issue", "Issue", TriangleAlert],
+              ["damage", "Damage", PackageX],
             ] as const
-          ).map(([value, label, hint, Icon]) => (
+          ).map(([value, label, Icon]) => (
             <button
               key={value}
               type="button"
@@ -205,15 +212,12 @@ export function ReportNewPage() {
                 setCategory("")
               }}
               className={cn(
-                "flex flex-col items-start gap-3 rounded-xl border border-input bg-card p-4 text-left transition-[color,background-color,border-color]",
+                "flex h-14 items-center justify-center gap-2 rounded-xl border border-input bg-card text-[15px] font-semibold transition-[color,background-color,border-color]",
                 kind === value && "border-brand bg-brand-soft"
               )}
             >
               <Icon className={cn("size-5", value === "damage" ? "text-warning" : "text-muted-foreground")} strokeWidth={1.6} />
-              <span>
-                <span className="block text-[15px] font-semibold">{label}</span>
-                <span className="block text-xs text-muted-foreground">{hint}</span>
-              </span>
+              {label}
             </button>
           ))}
         </div>
@@ -236,7 +240,7 @@ export function ReportNewPage() {
           {event && isClosed(event) && (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Info className="size-3.5" />
-              This event is closed. The report is still kept on record.
+              Closed event · kept on record
             </p>
           )}
         </Field>
@@ -253,18 +257,15 @@ export function ReportNewPage() {
                   </span>
                 </span>
               ) : (
-                <span className="text-muted-foreground">
-                  {event ? "Pick from this event's items" : "Pick an event first"}
-                </span>
+                <span className="text-muted-foreground">{event ? "Pick item" : "Pick an event first"}</span>
               )}
             </PickerButton>
             {existing && (
               <Callout icon={Info} tone="info">
-                This item was already reported in this phase ({existing.id}, {existing.status.toLowerCase()}).{" "}
+                Already reported ·{" "}
                 <Link to={`/reports/${existing.id}`} className="font-semibold underline underline-offset-2">
-                  Add an update there
-                </Link>{" "}
-                if it's the same problem.
+                  update {existing.id}
+                </Link>
               </Callout>
             )}
           </Field>
@@ -278,65 +279,6 @@ export function ReportNewPage() {
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
-        </Field>
-
-        <Field label="Urgency">
-          <div className="grid grid-cols-3 gap-1 rounded-md bg-secondary p-1">
-            {SEVERITIES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                aria-pressed={severity === s}
-                onClick={() => setSeverity(s)}
-                className={cn(
-                  "flex h-9 items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold text-muted-foreground transition-[color,background-color,border-color]",
-                  severity === s && "bg-card text-foreground ring-1 ring-border"
-                )}
-              >
-                <span
-                  className={cn(
-                    "size-2 rounded-full",
-                    s === "Low" && "bg-[#9ca3af]",
-                    s === "Medium" && "bg-warning",
-                    s === "High" && "bg-destructive"
-                  )}
-                />
-                {s}
-              </button>
-            ))}
-          </div>
-          {severity === "High" && lead && (
-            <Callout icon={Phone} tone="danger">
-              High urgency: after sending, call{" "}
-              <a href={`tel:${lead.phone}`} className="font-semibold underline underline-offset-2">
-                {lead.name}
-              </a>{" "}
-              right away.
-            </Callout>
-          )}
-        </Field>
-
-        <Field label="Short title" error={err("title") && "Add a title"}>
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={autoTitle || "e.g. Stage power is out"}
-            maxLength={80}
-            aria-invalid={err("title") || undefined}
-          />
-        </Field>
-
-        <Field
-          label="What happened?"
-          error={err("description") && `Describe it briefly (min. ${DESC_MIN} characters)`}
-          hint={`${desc.length}/${DESC_MAX}`}
-        >
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value.slice(0, DESC_MAX))}
-            placeholder="Where, what happened, and what you've done so far."
-            aria-invalid={err("description") || undefined}
-          />
         </Field>
 
         <Field label={`Photos (${photos.length}/${MAX_PHOTOS})`}>
@@ -366,10 +308,56 @@ export function ReportNewPage() {
               </>
             )}
           </div>
-          {kind === "damage" && photos.length === 0 && (
-            <p className="text-xs text-muted-foreground">Photos help the warehouse team assess the damage.</p>
+        </Field>
+
+        <Field label="Urgency">
+          <div className="grid grid-cols-3 gap-1 rounded-md bg-secondary p-1">
+            {SEVERITIES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={severity === s}
+                onClick={() => setSeverity(s)}
+                className={cn(
+                  "flex h-9 items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold text-muted-foreground transition-[color,background-color,border-color]",
+                  severity === s && "bg-card text-foreground ring-1 ring-border"
+                )}
+              >
+                <span
+                  className={cn(
+                    "size-2 rounded-full",
+                    s === "Low" && "bg-[#9ca3af]",
+                    s === "Medium" && "bg-warning",
+                    s === "High" && "bg-destructive"
+                  )}
+                />
+                {s}
+              </button>
+            ))}
+          </div>
+          {severity === "High" && lead && (
+            <Button asChild variant="outline" className="w-full border-destructive/40 text-destructive">
+              <a href={`tel:${lead.phone}`}>
+                <Phone />
+                Also call {lead.name.split(" ")[0]}
+              </a>
+            </Button>
           )}
         </Field>
+
+        <Field
+          label={kind === "damage" ? "Note (optional)" : "What happened?"}
+          error={err("description") && `At least ${DESC_MIN} characters`}
+          hint={`${desc.length}/${DESC_MAX}`}
+        >
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value.slice(0, DESC_MAX))}
+            placeholder={kind === "damage" ? "e.g. 2 glasses cracked" : "Where, what, what you did"}
+            aria-invalid={err("description") || undefined}
+          />
+        </Field>
+
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[440px] border-t bg-card px-4 pt-3 pb-[max(env(safe-area-inset-bottom),14px)]">

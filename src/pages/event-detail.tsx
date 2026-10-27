@@ -1,7 +1,15 @@
 import * as React from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 import {
+  ArrowRight,
   Check,
+  Clock,
+  Info,
+  MapPin,
+  Palette,
+  PartyPopper,
+  PenLine,
+  Users,
   CircleCheck,
   CircleDashed,
   ClipboardList,
@@ -18,7 +26,9 @@ import {
   Truck,
 } from "lucide-react"
 
+import { ActionBar } from "@/components/action-bar"
 import { CategoryIcon } from "@/components/category-icon"
+import { Meta, MetaRow } from "@/components/meta"
 import { PersonRow } from "@/components/person-row"
 import { PhaseCompleteSheet } from "@/components/phase-complete"
 import { PhaseTrack } from "@/components/phase-track"
@@ -82,32 +92,29 @@ export function EventDetailPage() {
       <TopBar back="/" titleAs="p" title={event.couple} subtitle={`${event.kind} · ${event.venue.name}`} />
 
       {/* Object header: the event itself, dated like its invitation. */}
-      <section className="mx-4 mt-4 mb-4 flex gap-3.5 rounded-xl p-3.5 edge">
-        <div className="flex w-[50px] shrink-0 flex-col items-center justify-center rounded-md bg-brand-soft py-2 text-brand-ink">
+      <section className="mx-4 mt-4 flex items-center gap-3.5 rounded-xl p-3.5 edge">
+        <div className="flex w-[50px] shrink-0 flex-col items-center justify-center rounded-md bg-brand-soft py-1.5 text-brand-ink">
           <span className="text-[12px] font-medium">{formatDate(event.date, { month: "short" })}</span>
           <span className="text-[22px] leading-tight font-semibold tabular">{formatDate(event.date, { day: "numeric" })}</span>
           <span className="text-[12px]">{formatDate(event.date, { weekday: "short" })}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-[22px] leading-tight font-bold tracking-[-0.01em] text-balance">{event.couple}</h1>
-          <p className="mt-1 text-[14px] text-muted-foreground">
-            {event.kind} · <span className="tabular">{event.guests}</span> guests
-            <span className="block">{event.theme}</span>
-          </p>
-          <dl className="mt-2.5 flex gap-5 text-[14px]">
-            <Fact label="Call" value={event.callTime} />
-            <Fact label="Event" value={`${event.startTime}–${event.endTime}`} />
-          </dl>
+          <h1 className="truncate text-[22px] leading-tight font-bold tracking-[-0.01em]">{event.couple}</h1>
+          <MetaRow className="mt-1.5 text-[14px] text-foreground">
+            <Meta icon={Clock} label="Call time">{event.callTime}</Meta>
+            <Meta icon={PartyPopper} label="Event">{event.startTime}–{event.endTime}</Meta>
+            <Meta icon={Users} label="Guests">{event.guests}</Meta>
+          </MetaRow>
         </div>
       </section>
 
       {!assigned && (
-        <Callout icon={EyeOff} tone="info" className="mx-4 mb-4">
-          You're not assigned to this event. You can view it, but you can't scan or
-          close phases.
+        <Callout icon={EyeOff} tone="info" className="mx-4 mt-3">
+          View only. You're not on this crew.
         </Callout>
       )}
 
+      {assigned && <EventActions event={event} progress={progress} />}
       <NowNext event={event} />
       <PhasePanel event={event} progress={progress} canAct={assigned} />
 
@@ -144,22 +151,15 @@ export function EventDetailPage() {
           <TeamTab event={event} />
         </TabsContent>
         <TabsContent value="reports">
-          <div className="grid grid-cols-2 gap-2 px-4 pt-2 pb-1">
-            <Button asChild variant="outline">
-              <Link to={`/new-report?event=${event.id}&type=issue`}>
-                <TriangleAlert />
-                Report issue
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to={`/new-report?event=${event.id}&type=damage`}>
-                <PackageX className="text-warning" />
-                Damaged item
-              </Link>
-            </Button>
-          </div>
+          <ActionBar
+            className="mx-4 mt-3"
+            actions={[
+              { icon: TriangleAlert, label: "Issue", to: `/new-report?event=${event.id}&type=issue` },
+              { icon: PackageX, label: "Damage", to: `/new-report?event=${event.id}&type=damage` },
+            ]}
+          />
           {eventReports.length === 0 ? (
-            <EmptyState icon={ClipboardList} title="No reports yet" body="All good so far." />
+            <EmptyState icon={ClipboardList} title="No reports" />
           ) : (
             <div className="list-card mt-3">
               {eventReports.map((r) => (
@@ -177,12 +177,19 @@ function Count({ n }: { n: number }) {
   return <span className="text-[13px] font-normal text-muted-foreground tabular">{n}</span>
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function EventActions({ event, progress }: { event: WeddingEvent; progress: PhaseProgress | null }) {
+  const lead = getPerson(event.crew.find((c) => c.lead)?.personId ?? "")
+  const scanning = !!progress?.phase.requiresScan && !progress.complete
   return (
-    <div>
-      <dt className="text-[13px] text-muted-foreground">{label}</dt>
-      <dd className="font-semibold tabular">{value}</dd>
-    </div>
+    <ActionBar
+      className="mx-4 mt-3"
+      actions={[
+        { icon: ScanLine, label: "Scan", to: `/scan/${event.id}`, primary: scanning, disabled: !progress?.phase.requiresScan },
+        { icon: TriangleAlert, label: "Report", to: `/new-report?event=${event.id}` },
+        ...(lead ? [{ icon: Phone, label: "Lead", href: `tel:${lead.phone}` }] : []),
+        { icon: Navigation, label: "Map", href: mapsLink(`${event.venue.name} ${event.venue.address}`) },
+      ]}
+    />
   )
 }
 
@@ -195,19 +202,24 @@ function NowNext({ event }: { event: WeddingEvent }) {
   }, [])
   const { now, next, minutesToNext } = nowAndNext(event)
   if (!now && !next) return null
-  // One container split by a divider, not two boxes.
   return (
-    <div className="mx-4 mb-4 grid grid-cols-2 divide-x divide-rule rounded-xl edge">
-      <div className="p-3.5">
-        <p className="text-[13px] text-muted-foreground">Now{now && <span className="tabular"> · since {now.time}</span>}</p>
-        <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold">{now ? now.label : "Not started"}</p>
+    <div className="mx-4 mt-3 rounded-xl text-[14px] edge">
+      <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+        <span className="size-2 shrink-0 rounded-full bg-brand" aria-hidden />
+        <span className="sr-only">Now:</span>
+        <span className="min-w-0 flex-1 truncate font-semibold">{now ? now.label : "Not started"}</span>
+        {now && <span className="text-[13px] text-muted-foreground tabular">{now.time}</span>}
       </div>
-      <div className="p-3.5">
-        <p className="text-[13px] text-muted-foreground tabular">
-          Next{next && ` · ${next.time}, ${inMinutes(minutesToNext!)}`}
-        </p>
-        <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold">{next ? next.label : "Rundown done"}</p>
-      </div>
+      {next && (
+        <div className="flex items-center gap-2.5 border-t border-rule px-3.5 py-2.5">
+          <Clock className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+          <span className="sr-only">Next:</span>
+          <span className="min-w-0 flex-1 truncate">{next.label}</span>
+          <span className="text-[13px] text-muted-foreground tabular">
+            {next.time} · {inMinutes(minutesToNext!)}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -227,12 +239,12 @@ function PhasePanel({
   if (!progress || isClosed(event)) {
     const last = phaseLog[event.id]?.at(-1)
     return (
-      <div className="mx-4 rounded-xl p-4 edge">
+      <div className="mx-4 mt-3 rounded-xl p-4 edge">
         <PhaseTrack index={PHASES.length} />
         <div className="mt-4 flex items-center gap-3">
           <CircleCheck className="size-5 shrink-0 text-success" />
           <div>
-            <p className="font-semibold">Event complete, every item back</p>
+            <p className="font-semibold">Complete · all items back</p>
             {last && (
               <p className="text-xs text-muted-foreground">
                 Closed {stamp(last.at)} · {personName(last.by)}
@@ -249,23 +261,22 @@ function PhasePanel({
   const next = PHASES[event.phaseIndex + 1]
 
   return (
-    <div className="mx-4 rounded-xl edge">
+    <div className="mx-4 mt-3 rounded-xl edge">
       <div className="p-4">
         <PhaseTrack index={event.phaseIndex} />
-        <p className="mt-4 text-[13px] text-muted-foreground">
-          Phase {event.phaseIndex + 1} of {PHASES.length}
-          {phase.handover && ` · ${phase.handover.party} signs off`}
-        </p>
-        <h2 className="text-[18px] leading-tight font-semibold">{phase.label}</h2>
-        <p className="mt-1 text-[14px] text-muted-foreground">{phase.hint}</p>
+        <div className="mt-4 flex items-baseline justify-between gap-3">
+          <h2 className="text-[18px] leading-tight font-semibold">{phase.label}</h2>
+          <span className="flex shrink-0 items-center gap-2 text-[13px] text-muted-foreground tabular">
+            {phase.handover && <PenLine className="size-3.5" strokeWidth={1.75} aria-label={`${phase.handover.party} signs off`} />}
+            {event.phaseIndex + 1}/{PHASES.length}
+          </span>
+        </div>
 
         {phase.requiresScan && (
           <>
-            <p className="mt-4 flex items-baseline gap-2">
+            <p className="mt-3 flex items-baseline gap-2">
               <span className="text-[32px] leading-none font-semibold tracking-[-0.02em] tabular">{left}</span>
-              <span className="text-[15px] text-muted-foreground">
-                {left === 0 ? "nothing left to scan" : left === 1 ? "item to scan" : "items to scan"}
-              </span>
+              <span className="text-[15px] text-muted-foreground">{left === 0 ? "all done" : "to scan"}</span>
             </p>
             <ManifestGrid progress={progress} codes={event.assetCodes} className="mt-3" />
           </>
@@ -301,25 +312,18 @@ function PhasePanel({
         )}
       </div>
 
-      {canAct && (
-        <div className="flex gap-2 border-t border-rule p-3">
-          {phase.requiresScan && !progress.complete && (
-            <Button asChild size="lg" className="flex-1">
-              <Link to={`/scan/${event.id}`}>
-                <ScanLine />
-                Scan {left} {left === 1 ? "item" : "items"}
-              </Link>
-            </Button>
-          )}
-          {(progress.complete || !phase.requiresScan) && (
-            <Button size="lg" className="flex-1" disabled={!progress.complete} onClick={() => setSheet(true)}>
-              {progress.complete
-                ? next
-                  ? `Continue to ${next.label}`
-                  : "Close event"
-                : `${left} ${left === 1 ? "task" : "tasks"} left before ${next?.label ?? "closing"}`}
-            </Button>
-          )}
+      {canAct && (progress.complete || !phase.requiresScan) && (
+        <div className="border-t border-rule p-3">
+          <Button size="lg" className="w-full" disabled={!progress.complete} onClick={() => setSheet(true)}>
+            {progress.complete ? (
+              <>
+                {next ? next.label : "Close event"}
+                <ArrowRight />
+              </>
+            ) : (
+              `${left} left`
+            )}
+          </Button>
         </div>
       )}
 
@@ -340,28 +344,28 @@ function InfoTab({ event }: { event: WeddingEvent }) {
     <div className="pb-6">
       <SectionLabel>Location</SectionLabel>
       <div className="list-card">
-        <div className="px-4 py-3.5">
-          <p className="font-semibold">{event.venue.name}</p>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">{event.venue.address}</p>
-          {hasText(event.venue.loadingNote) && (
-            <Callout icon={Truck} tone="info" className="mt-3 px-3 py-2.5">
-              {event.venue.loadingNote}
-            </Callout>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-2 p-3">
-          <Button asChild variant="secondary" size="sm">
-            <a href={mapsLink(`${event.venue.name} ${event.venue.address}`)} target="_blank" rel="noreferrer">
-              <Navigation />
-              Open Maps
-            </a>
-          </Button>
-          <Button asChild variant="secondary" size="sm">
-            <a href={`tel:${event.venue.pic.phone}`}>
-              <Phone />
-              Venue contact
-            </a>
-          </Button>
+        <a
+          href={mapsLink(`${event.venue.name} ${event.venue.address}`)}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-3 px-4 py-3 active:bg-secondary"
+        >
+          <MapPin className="size-[18px] shrink-0 text-muted-foreground" strokeWidth={1.75} />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">{event.venue.name}</span>
+            <span className="block truncate text-[13px] text-muted-foreground">{event.venue.address}</span>
+          </span>
+          <Navigation className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+        </a>
+        {hasText(event.venue.loadingNote) && (
+          <div className="flex items-start gap-3 px-4 py-3 text-[14px]">
+            <Truck className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" strokeWidth={1.75} aria-label="Loading" />
+            {event.venue.loadingNote}
+          </div>
+        )}
+        <div className="flex items-start gap-3 px-4 py-3 text-[14px]">
+          <Palette className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" strokeWidth={1.75} aria-label="Theme" />
+          {event.theme}
         </div>
       </div>
 
@@ -399,8 +403,8 @@ function InfoTab({ event }: { event: WeddingEvent }) {
           <SectionLabel>Crew notes</SectionLabel>
           <ul className="list-card">
             {event.notes.map((n, i) => (
-              <li key={i} className="flex gap-3 px-4 py-3 text-sm">
-                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-[#9ca3af]" />
+              <li key={i} className="flex gap-3 px-4 py-3 text-[14px]">
+                <Info className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
                 {n}
               </li>
             ))}
@@ -410,14 +414,14 @@ function InfoTab({ event }: { event: WeddingEvent }) {
 
       <SectionLabel>Key contacts</SectionLabel>
       <div className="list-card">
-        {leadPerson && <PersonRow person={leadPerson} detail="Field coordinator" />}
+        {leadPerson && <PersonRow person={leadPerson} detail="Lead" />}
         <PersonRow
           person={{ id: "c0", name: event.client.name, role: event.client.relation, phone: event.client.phone }}
-          detail={`Client · ${event.client.relation}`}
+          detail={event.client.relation}
         />
         <PersonRow
-          person={{ id: "c1", name: event.venue.pic.name, role: "Venue contact", phone: event.venue.pic.phone }}
-          detail="Venue contact"
+          person={{ id: "c1", name: event.venue.pic.name.replace(/\s*\(.*\)/, ""), role: "Venue", phone: event.venue.pic.phone }}
+          detail="Venue"
         />
       </div>
 
@@ -432,7 +436,7 @@ function InfoTab({ event }: { event: WeddingEvent }) {
                   <p className="text-sm font-medium">{PHASES.find((p) => p.key === entry.phase)?.label}</p>
                   <p className="text-xs text-muted-foreground">
                     {stamp(entry.at)} · {personName(entry.by)}
-                    {entry.handover && ` · received by ${entry.handover.name}`}
+                    {entry.handover && ` · signed ${entry.handover.name}`}
                   </p>
                 </div>
                 {entry.handover && (
@@ -485,7 +489,7 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search item name or code"
+            placeholder="Search name or code"
             className="pl-10"
             type="search"
           />
@@ -495,8 +499,8 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
             {(
               [
                 ["all", "All"],
-                ["pending", `Not scanned · ${progress!.pending.length}`],
-                ["issue", "Needs attention"],
+                ["pending", `Left · ${progress!.pending.length}`],
+                ["issue", "Flagged"],
               ] as const
             ).map(([v, label]) => (
               <button
@@ -518,8 +522,7 @@ function ItemsTab({ event, progress }: { event: WeddingEvent; progress: PhasePro
       {groups.length === 0 && (
         <EmptyState
           icon={PackageSearch}
-          title={s ? `No items match “${q}”` : "No items in this filter"}
-          body={s ? "Check the spelling or search by the code on the label." : undefined}
+          title={s ? `No match for “${q}”` : "Nothing here"}
         />
       )}
 
@@ -585,7 +588,7 @@ function TeamTab({ event }: { event: WeddingEvent }) {
 
   return (
     <div className="pb-6">
-      <SectionLabel>In-house crew · {internal.length}</SectionLabel>
+      <SectionLabel>Crew · {internal.length}</SectionLabel>
       <div className="list-card">
         {internal.map((c) => (
           <PersonRow
@@ -606,7 +609,7 @@ function TeamTab({ event }: { event: WeddingEvent }) {
       </div>
       {vendors.length > 0 && (
         <>
-          <SectionLabel>Vendor · {vendors.length}</SectionLabel>
+          <SectionLabel>Vendors · {vendors.length}</SectionLabel>
           <div className="list-card">
             {vendors.map((c) => (
               <PersonRow key={c.personId} person={getPerson(c.personId)!} detail={c.duty} />
@@ -614,10 +617,6 @@ function TeamTab({ event }: { event: WeddingEvent }) {
           </div>
         </>
       )}
-      <p className="px-5 pt-4 text-xs text-muted-foreground">
-        All crew call time <span className="font-semibold text-foreground tabular">{event.callTime}</span> at
-        the warehouse.
-      </p>
     </div>
   )
 }

@@ -55,7 +55,7 @@ Note: most sources are vendor pages. Treat them as pattern references, not settl
 | Case | Behaviour |
 |---|---|
 | Required fields empty | Marked red per field + toast |
-| Description too short / long | Min 10, max 500 characters, with a counter |
+| Description too short / long | Issue: min 10 characters; damage: note optional (the item, condition and photos describe it); max 500, with a counter |
 | Same item already reported in this phase | Notice + link to the existing report (avoids duplicates) |
 | Not an image / >15 MB / unreadable | Rejected with a per-file message |
 | More than 4 photos | Extras rejected with a message |

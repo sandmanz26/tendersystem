@@ -1,5 +1,8 @@
 import { Link, useParams } from "react-router-dom"
 import {
+  Boxes,
+  CalendarCheck,
+  Ruler,
   CalendarDays,
   ChevronRight,
   CircleCheck,
@@ -13,7 +16,7 @@ import {
 
 import { CategoryIcon } from "@/components/category-icon"
 import { ReportRow } from "@/components/report-row"
-import { Callout, InfoRow, SectionLabel } from "@/components/section"
+import { Callout, SectionLabel } from "@/components/section"
 import { TopBar } from "@/components/top-bar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,6 +40,8 @@ export function ItemDetailPage() {
 
   const assetReports = reports.filter((r) => r.assetCode === asset.code)
   const where = getWhereabouts(asset.code, events, scans)
+  const reportEvent = event?.id ?? (where.at === "event" ? where.event.id : undefined)
+  const reportHref = `/new-report?type=damage&asset=${asset.code}${reportEvent ? `&event=${reportEvent}` : ""}`
   const bookings = events
     .filter((e) => e.assetCodes.includes(asset.code) && !isClosed(e))
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -71,15 +76,19 @@ export function ItemDetailPage() {
             ) : (
               <MapPin className="size-[18px] shrink-0 text-accent-foreground" />
             )}
-            <div className="min-w-0 text-[13px]">
-              <p className="font-semibold">
-                {where.at === "warehouse" ? `In warehouse · ${asset.location}` : `At ${where.event.couple}`}
-              </p>
-              {where.at === "event" && (
-                <p className="text-muted-foreground">Left warehouse {stamp(where.since)}</p>
-              )}
-            </div>
+            <p className="min-w-0 flex-1 truncate text-[14px] font-semibold">
+              {where.at === "warehouse" ? asset.location : where.event.couple}
+            </p>
+            {where.at === "event" && (
+              <span className="shrink-0 text-[13px] text-muted-foreground tabular">out {stamp(where.since)}</span>
+            )}
           </div>
+          <Button asChild variant="outline" className="mt-3 w-full">
+            <Link to={reportHref}>
+              <PackageX className="text-warning" />
+              Report damage
+            </Link>
+          </Button>
         </div>
 
         {asset.notes && (
@@ -89,14 +98,12 @@ export function ItemDetailPage() {
         )}
       </section>
 
-      <SectionLabel>Details</SectionLabel>
-      <div className="list-card">
-        <InfoRow label="Per scan">{asset.unit}</InfoRow>
-        <InfoRow label="Warehouse spot">{asset.location}</InfoRow>
-        {asset.dimensions && <InfoRow label="Dimensions">{asset.dimensions}</InfoRow>}
-        <InfoRow label="Last checked">
-          {formatDate(asset.lastChecked, { day: "numeric", month: "long", year: "numeric" })}
-        </InfoRow>
+      {/* Facts as icon tiles: value first, a one-word label under it. */}
+      <div className={cn("mx-4 mt-3 grid gap-px overflow-hidden rounded-xl border bg-border", asset.dimensions ? "grid-cols-2" : "grid-cols-3")}>
+        <Fact icon={Boxes} label="Per scan" value={asset.unit} />
+        <Fact icon={Warehouse} label="Spot" value={asset.location.replace(/^Warehouse\s+/, "")} />
+        {asset.dimensions && <Fact icon={Ruler} label="Size" value={asset.dimensions} />}
+        <Fact icon={CalendarCheck} label="Checked" value={formatDate(asset.lastChecked, { day: "numeric", month: "short" })} />
       </div>
 
       {event && (
@@ -127,14 +134,14 @@ export function ItemDetailPage() {
                       <p className="flex items-center gap-1 text-xs text-muted-foreground">
                         {st.record.synced === false && <CloudOff className="size-3" />}
                         {stamp(st.record.at)} · {personName(st.record.by)}
-                        {st.record.skippedPrevious && " · skipped checkpoint"}
+                        {st.record.skippedPrevious && " · skipped"}
                       </p>
                     )}
                     {st.state === "reported" && (
                       <p className="text-xs text-warning">Reported: {st.report.category}</p>
                     )}
                   </div>
-                  {isCurrent && st.state === "pending" && <Badge variant="outline">Awaiting scan</Badge>}
+                  {isCurrent && st.state === "pending" && <Badge variant="accent">Now</Badge>}
                 </li>
               )
             })}
@@ -144,7 +151,7 @@ export function ItemDetailPage() {
 
       <SectionLabel>Bookings · {bookings.length}</SectionLabel>
       {bookings.length === 0 ? (
-        <p className="list-card px-4 py-4 text-[13px] text-muted-foreground">Not booked yet.</p>
+        <p className="list-card px-4 py-3 text-[14px] text-muted-foreground">None</p>
       ) : (
         <ul className="list-card">
           {bookings.map((e) => (
@@ -167,9 +174,7 @@ export function ItemDetailPage() {
 
       <SectionLabel>Report history · {assetReports.length}</SectionLabel>
       {assetReports.length === 0 ? (
-        <p className="list-card px-4 py-4 text-[13px] text-muted-foreground">
-          Never reported damaged or missing.
-        </p>
+        <p className="list-card px-4 py-3 text-[14px] text-muted-foreground">None</p>
       ) : (
         <div className="list-card">
           {assetReports.map((r) => (
@@ -178,16 +183,25 @@ export function ItemDetailPage() {
         </div>
       )}
 
-      <div className="px-4 pt-6 pb-4">
-        <Button asChild variant="outline" size="lg" className="w-full text-warning">
-          <Link
-            to={`/new-report?type=damage&asset=${asset.code}${event ? `&event=${event.id}` : where.at === "event" ? `&event=${where.event.id}` : ""}`}
-          >
-            <PackageX />
-            Report damaged / missing
-          </Link>
-        </Button>
-      </div>
+      <div className="h-4" />
+    </div>
+  )
+}
+
+function Fact({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>
+  label: string
+  value: string
+}) {
+  return (
+    <div className="bg-card px-3 py-2.5">
+      <Icon className="size-4 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+      <p className="mt-1.5 text-[14px] leading-snug font-semibold">{value}</p>
+      <p className="text-[12px] text-muted-foreground">{label}</p>
     </div>
   )
 }

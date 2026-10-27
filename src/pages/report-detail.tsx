@@ -1,12 +1,13 @@
 import * as React from "react"
 import { Link, useParams } from "react-router-dom"
-import { ChevronRight, CloudOff, SendHorizontal } from "lucide-react"
+import { CalendarDays, ChevronRight, Clock, CloudOff, Layers, SendHorizontal, Tag, User } from "lucide-react"
 import { toast } from "sonner"
 
 import { CategoryIcon } from "@/components/category-icon"
 import { PersonAvatar } from "@/components/person-row"
 import { SEVERITY_DOT, STATUS_VARIANT } from "@/components/report-row"
-import { InfoRow, SectionLabel } from "@/components/section"
+import { Meta, MetaRow } from "@/components/meta"
+import { SectionLabel } from "@/components/section"
 import { TopBar } from "@/components/top-bar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -44,18 +45,27 @@ export function ReportDetailPage() {
           <Badge variant={STATUS_VARIANT[report.status]}>{report.status}</Badge>
           <Badge variant="outline">
             <span className={cn("size-1.5 rounded-full", report.status === "Resolved" ? "bg-[#9ca3af]" : SEVERITY_DOT[report.severity])} />
-            {report.severity} urgency
+            {report.severity}
           </Badge>
-          <Badge variant="secondary">{report.kind === "damage" ? "Damaged item" : "Field issue"}</Badge>
+          <Badge variant="secondary">{report.kind === "damage" ? "Damage" : "Issue"}</Badge>
           {report.synced === false && (
             <Badge variant="warning">
               <CloudOff />
-              Waiting for signal
+              Queued
             </Badge>
           )}
         </div>
         <h1 className="mt-3 text-[20px] leading-snug font-bold">{report.title}</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-foreground/85">{report.description}</p>
+        <MetaRow className="mt-3">
+          <Meta icon={Tag} label={report.kind === "damage" ? "Condition" : "Category"}>{report.category}</Meta>
+          <Link to={`/event/${event.id}?tab=reports`} className="underline-offset-4 hover:underline">
+            <Meta icon={CalendarDays} label="Event">{event.couple}</Meta>
+          </Link>
+          <Meta icon={Layers} label="Phase">{PHASES.find((p) => p.key === report.phase)?.short}</Meta>
+          <Meta icon={User} label="Reported by">{author.name.split(" ")[0]}</Meta>
+          <Meta icon={Clock} label="Reported">{stamp(report.createdAt)}</Meta>
+        </MetaRow>
 
         {report.photos.length > 0 && (
           <div className="mt-4 grid grid-cols-4 gap-2">
@@ -92,18 +102,6 @@ export function ReportDetailPage() {
         </>
       )}
 
-      <SectionLabel>Details</SectionLabel>
-      <div className="list-card">
-        <InfoRow label={report.kind === "damage" ? "Condition" : "Category"}>{report.category}</InfoRow>
-        <InfoRow label="Event">
-          <Link to={`/event/${event.id}?tab=reports`} className="underline underline-offset-4">
-            {event.couple}
-          </Link>
-        </InfoRow>
-        <InfoRow label="Phase">{PHASES.find((p) => p.key === report.phase)?.label}</InfoRow>
-        <InfoRow label="Reported by">{author.name}</InfoRow>
-        <InfoRow label="Time">{stamp(report.createdAt)}</InfoRow>
-      </div>
 
       <SectionLabel>Activity</SectionLabel>
       <ol className="list-card px-4 py-1 [&>*+*]:!border-0">
@@ -145,8 +143,8 @@ export function ReportDetailPage() {
           onChange={(e) => setNote(e.target.value)}
           placeholder={
             report.status === "Resolved"
-              ? "Problem back? Write an update to reopen it"
-              : "Add an update, e.g. handled / need help"
+              ? "Update to reopen"
+              : "Add an update"
           }
           maxLength={500}
           className="min-h-20"

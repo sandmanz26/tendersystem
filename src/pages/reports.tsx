@@ -32,7 +32,6 @@ export function ReportsPage() {
         large
         back={false}
         title="Reports"
-        subtitle="Field issues & damaged items"
         right={
           <Button asChild size="sm">
             <Link to="/new-report">

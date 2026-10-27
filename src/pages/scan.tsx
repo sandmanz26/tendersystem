@@ -2,9 +2,10 @@ import * as React from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import {
   Ban,
+  Flag,
+  Keyboard,
   ChevronRight,
   Camera,
-  CameraOff,
   CircleCheck,
   CircleDashed,
   CloudOff,
@@ -51,7 +52,7 @@ export function ScanPickerPage() {
 
   return (
     <div>
-      <TopBar large back={false} subtitle="Pick the event you're working on" title="Scan items" />
+      <TopBar large back={false} title="Scan" />
       {scannable.length === 0 ? (
         <EmptyState
           icon={PackageCheck}
@@ -211,7 +212,7 @@ export function ScannerPage() {
           <button
             type="button"
             aria-label="Close scanner"
-            className="flex size-10 items-center justify-center rounded-md bg-white/10 active:translate-y-px"
+            className="flex size-10 items-center justify-center rounded-md border border-white/20 active:translate-y-px"
             onClick={() => navigate(`/event/${event.id}`)}
           >
             <X className="size-5" />
@@ -224,7 +225,7 @@ export function ScannerPage() {
             type="button"
             aria-label={sound ? "Mute sound" : "Unmute sound"}
             onClick={() => setSound((s) => !s)}
-            className="flex size-10 items-center justify-center rounded-md bg-white/10 active:translate-y-px"
+            className="flex size-10 items-center justify-center rounded-md border border-white/20 active:translate-y-px"
           >
             {sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
           </button>
@@ -238,44 +239,52 @@ export function ScannerPage() {
           <ManifestGrid progress={progress} codes={event.assetCodes} tone="dark" legend={false} className="[&>div>span]:h-2.5" />
         </div>
 
-        <div className="relative mx-4 mt-4 aspect-[4/3] overflow-hidden rounded-xl bg-[#1c1c1e]">
+        {/* The viewfinder is the camera switch: one big target instead of a button and a sentence. */}
+        <div className="relative mx-4 mt-4 aspect-[16/11] overflow-hidden rounded-xl bg-[#1c1c1e]">
           {camera && (
             <video ref={videoRef} playsInline muted className="absolute inset-0 size-full object-cover" />
           )}
-          <Viewfinder active={camera} />
-          {!camera && (
-            <div className="absolute inset-x-0 bottom-4 px-6 text-center text-[14px] text-white/70">
-              {cameraScanSupported
-                ? "Turn on the camera and point it at the QR label"
-                : "This browser can't scan with the camera yet. Type the code on the label."}
-            </div>
-          )}
+          <button
+            type="button"
+            className="absolute inset-0 disabled:cursor-default"
+            disabled={!cameraScanSupported}
+            aria-label={camera ? "Turn camera off" : "Turn camera on"}
+            onClick={() => setCamera((c) => !c)}
+          >
+            <Viewfinder active={camera} />
+            {!camera && (
+              <span className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-1.5 text-[14px] font-medium text-white/80">
+                {cameraScanSupported ? <Camera className="size-4" /> : <Keyboard className="size-4" />}
+                {cameraScanSupported ? "Tap to scan" : "Type the code"}
+              </span>
+            )}
+          </button>
           {cameraError && (
-            <div className="absolute inset-x-3 bottom-3 rounded-xl bg-black/75 px-3 py-2 text-xs">
-              {cameraError}
-            </div>
+            <div className="absolute inset-x-3 top-3 rounded-xl bg-black/75 px-3 py-2 text-xs">{cameraError}</div>
           )}
           {!online && (
             <span className="absolute top-3 left-3 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[12px] font-semibold text-[#fcd34d]">
               <CloudOff className="size-3" /> Offline
             </span>
           )}
+          <div className="pointer-events-none absolute inset-x-3 bottom-3 [&>*]:pointer-events-auto">
+            <ScanFeedback
+              feedback={feedback}
+              canUndo={canUndo}
+              onUndo={() => {
+                if (!feedback) return
+                undoScan(event.id, feedback.code)
+                toast(`Undone: ${feedback.code}`)
+                setFeedback(null)
+              }}
+              eventId={event.id}
+            />
+          </div>
         </div>
 
         <div className="px-4 pt-3 pb-4">
-          <ScanFeedback
-            feedback={feedback}
-            canUndo={canUndo}
-            onUndo={() => {
-              if (!feedback) return
-              undoScan(event.id, feedback.code)
-              toast(`Scan of ${feedback.code} undone`)
-              setFeedback(null)
-            }}
-            eventId={event.id}
-          />
           <form
-            className="mt-3 flex gap-2"
+            className="flex gap-2"
             onSubmit={(e) => {
               e.preventDefault()
               if (!manual.trim()) return
@@ -286,7 +295,7 @@ export function ScannerPage() {
             <Input
               value={manual}
               onChange={(e) => setManual(e.target.value)}
-              placeholder="Type a code, e.g. KRS-TFG-01"
+              placeholder="KRS-TFG-01"
               autoCapitalize="characters"
               autoCorrect="off"
               spellCheck={false}
@@ -297,25 +306,18 @@ export function ScannerPage() {
             <Button type="submit" size="icon" variant="secondary" aria-label="Submit code" disabled={!manual.trim()}>
               <CornerDownLeft />
             </Button>
-          </form>
-          <div className="mt-2 grid grid-cols-2 gap-2">
             <Button
-              className="bg-white/10 text-white hover:bg-white/15 disabled:bg-white/5 disabled:text-white/50"
-              disabled={!cameraScanSupported}
-              onClick={() => setCamera((c) => !c)}
-            >
-              {camera ? <CameraOff /> : <Camera />}
-              {camera ? "Turn off" : "Camera"}
-            </Button>
-            <Button
-              className="bg-white/10 text-white hover:bg-white/15 disabled:bg-white/5 disabled:text-white/50"
+              type="button"
+              size="icon"
+              aria-label="Scan demo"
+              title="Scan demo"
+              className="border border-white/20 bg-transparent text-white hover:bg-white/10 disabled:bg-transparent disabled:text-white/40"
               disabled={progress.pending.length === 0}
               onClick={simulate}
             >
               <Wand2 />
-              Scan demo
             </Button>
-          </div>
+          </form>
         </div>
       </div>
 
@@ -323,32 +325,31 @@ export function ScannerPage() {
       <div className="flex-1 pb-32">
         {phase.key === "load_out" && daysAway > 1 && (
           <Callout icon={Info} tone="info" className="mx-4 mt-4">
-            This event is still {daysAway} days away. Make sure you're loading for the right event.
+            Event in {daysAway} days. Right truck?
           </Callout>
         )}
         {progress.flagged.length > 0 && (
           <Callout icon={TriangleAlert} className="mx-4 mt-4">
-            {progress.flagged.length} items were scanned here without a scan at the previous checkpoint.
-            This has been noted for the coordinator.
+            {progress.flagged.length} skipped the last checkpoint. Flagged for the lead.
           </Callout>
         )}
 
         <div className="flex items-center px-4 pt-4 pb-3">
           <ToggleGroup type="single" value={list} onValueChange={(v) => v && setList(v as typeof list)}>
-            <ToggleGroupItem value="pending">To scan · {progress.pending.length}</ToggleGroupItem>
-            <ToggleGroupItem value="done">Recorded · {doneCodes.length}</ToggleGroupItem>
+            <ToggleGroupItem value="pending">
+              Left <span className="tabular text-muted-foreground">{progress.pending.length}</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="done">
+              Done <span className="tabular text-muted-foreground">{doneCodes.length}</span>
+            </ToggleGroupItem>
           </ToggleGroup>
         </div>
 
         {list === "pending" && progress.pending.length === 0 && (
-          <EmptyState
-            icon={PackageCheck}
-            title="Every item is recorded"
-            body={next ? `Continue to ${next.label}.` : "The event is ready to close."}
-          />
+          <EmptyState icon={PackageCheck} title="All recorded" />
         )}
         {list === "done" && doneCodes.length === 0 && (
-          <EmptyState icon={ScanLine} title="Nothing scanned yet" body="Start with the nearest item." />
+          <EmptyState icon={ScanLine} title="Nothing scanned yet" />
         )}
 
         <ul className="list-card empty:hidden">
@@ -376,8 +377,14 @@ export function ScannerPage() {
                   </p>
                 </Link>
                 {st.state === "pending" && (
-                  <Button asChild size="sm" variant="ghost" className="px-2 text-[14px] font-medium text-foreground underline-offset-4 hover:underline">
-                    <Link to={`/new-report?event=${event.id}&type=damage&asset=${code}`}>Report</Link>
+                  <Button asChild size="icon" variant="ghost" className="-mr-2 text-muted-foreground">
+                    <Link
+                      to={`/new-report?event=${event.id}&type=damage&asset=${code}`}
+                      aria-label={`Report ${asset.name} damaged or missing`}
+                      title="Report damaged or missing"
+                    >
+                      <Flag strokeWidth={1.75} />
+                    </Link>
                   </Button>
                 )}
                 {st.state === "scanned" && (
@@ -395,12 +402,6 @@ export function ScannerPage() {
           })}
         </ul>
 
-        {list === "pending" && progress.pending.length > 0 && (
-          <p className="px-5 pt-3 text-xs text-muted-foreground">
-            Item missing, short, or damaged? Tap <span className="font-semibold text-warning">Report</span>.
-            Reported items don't block the phase, but they stay on record.
-          </p>
-        )}
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[440px] border-t bg-card px-4 pt-3 pb-[max(env(safe-area-inset-bottom),14px)]">
@@ -414,11 +415,7 @@ export function ScannerPage() {
             setSheet(true)
           }}
         >
-          {progress.complete
-            ? next
-              ? `Done, continue to ${next.label}`
-              : "Done, close event"
-            : `${progress.pending.length} items to go`}
+          {progress.complete ? (next ? next.label : "Close event") : `${progress.pending.length} left`}
         </Button>
       </div>
 
@@ -467,12 +464,7 @@ function ScanFeedback({
   onUndo: () => void
   eventId: string
 }) {
-  if (!feedback)
-    return (
-      <div className="flex h-16 items-center justify-center rounded-xl border border-dashed border-white/25 px-3 text-[14px] text-white/70">
-        Scan results appear here
-      </div>
-    )
+  if (!feedback) return null
 
   const warnOk = feedback.status === "ok" && (feedback.skippedPrevious || feedback.conditionNote)
   const tone =
@@ -492,37 +484,37 @@ function ScanFeedback({
       Icon = warnOk ? TriangleAlert : CircleCheck
       title = feedback.name
       detail = feedback.skippedPrevious
-        ? `Not recorded at ${PHASES.find((p) => p.key === feedback.skippedPrevious)?.short}. Flagged for a check.`
+        ? `Skipped ${PHASES.find((p) => p.key === feedback.skippedPrevious)?.short} · flagged`
         : feedback.conditionNote
-          ? `Check first: ${feedback.conditionNote}`
+          ? `Check: ${feedback.conditionNote}`
           : feedback.code
       break
     case "duplicate":
       Icon = Info
-      title = `${feedback.name} already recorded`
-      detail = `${clock(feedback.at)} by ${personName(feedback.by)}`
+      title = `Already scanned`
+      detail = `${feedback.name} · ${clock(feedback.at)} · ${personName(feedback.by).split(" ")[0]}`
       break
     case "other-event":
-      title = "This item isn't for this event"
+      title = "Wrong event"
       detail = feedback.eventName
-        ? `${feedback.code} is booked for ${feedback.eventName}. Don't load it.`
-        : `${feedback.code} isn't on this event's list.`
+        ? `${feedback.code} → ${feedback.eventName}. Don't load.`
+        : `${feedback.code} not on this list`
       break
     case "still-out":
-      title = "Item is still at another event"
-      detail = `${feedback.code} hasn't come back from ${feedback.eventName}. Check the label or call the warehouse.`
+      title = "Still out"
+      detail = `${feedback.code} is still at ${feedback.eventName}`
       break
     case "unknown":
       title = "Unknown code"
-      detail = `${feedback.code} isn't in the inventory. The label may be damaged.`
+      detail = `${feedback.code} not in inventory`
       break
     case "invalid":
-      title = "Wrong code format"
-      detail = "Correct format, e.g. KRS-TFG-01"
+      title = "Wrong format"
+      detail = "Like KRS-TFG-01"
       break
     default:
       Icon = Info
-      title = "Scanning isn't available in this phase"
+      title = "No scan in this phase"
       detail = ""
   }
 

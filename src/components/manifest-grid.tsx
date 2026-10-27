@@ -39,10 +39,10 @@ export function ManifestGrid({
       </div>
       {legend && (
         <div className={cn("mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs tabular", dark ? "text-white/75" : "text-muted-foreground")}>
-          <Key state="scanned" dark={dark} label={`${count("scanned") + count("flagged")} scanned`} />
+          <Key state="scanned" dark={dark} label={`${count("scanned") + count("flagged")} done`} />
           {count("reported") > 0 && <Key state="reported" dark={dark} label={`${count("reported")} reported`} />}
-          {count("flagged") > 0 && <Key state="flagged" dark={dark} label={`${count("flagged")} skipped a checkpoint`} />}
-          <Key state="pending" dark={dark} label="to scan" />
+          {count("flagged") > 0 && <Key state="flagged" dark={dark} label={`${count("flagged")} flagged`} />}
+          <Key state="pending" dark={dark} label={`${count("pending")} left`} />
         </div>
       )}
     </div>

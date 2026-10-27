@@ -31,10 +31,10 @@ export function SyncStatus({ className, dark }: { className?: string; dark?: boo
         <CloudOff className="size-3.5" />
       )}
       {online
-        ? `Syncing ${pendingSync} items…`
+        ? `Syncing ${pendingSync}…`
         : pendingSync > 0
-          ? `Offline · ${pendingSync} items saved on this phone, sent when back online`
-          : "Offline · scanning & reporting still work, saved on this phone"}
+          ? `Offline · ${pendingSync} queued on this phone`
+          : "Offline · still works, saves on this phone"}
     </div>
   )
 }

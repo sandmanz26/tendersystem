@@ -75,15 +75,15 @@ export function ProfilePage() {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">{online ? "Online" : "Offline"}</p>
             <p className="text-xs text-muted-foreground">
-              {pendingSync > 0 ? `${pendingSync} items waiting to send` : `Synced ${stamp(lastSyncAt)}`}
+              {pendingSync > 0 ? `${pendingSync} queued` : `Synced ${stamp(lastSyncAt)}`}
             </p>
           </div>
         </div>
         <label className="flex cursor-pointer items-center gap-3 px-4 py-3.5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">Simulate no signal</p>
+            <p className="text-sm font-semibold">Offline test mode</p>
             <p className="text-xs text-muted-foreground">
-              Try scanning & reporting as if at a venue with no signal. Data is sent when you turn this off.
+              Practise with no signal
             </p>
           </div>
           <Switch checked={forceOffline} onChange={setForceOffline} />

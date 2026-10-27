@@ -69,6 +69,44 @@ The meter passed everywhere after round 2, so round 3 looked at every screen and
 
 Final gate on the final code: `inspect.mjs --app` 0 FAIL / 0 WARN on 17 screen states (every screen, every event tab, a closed and a future event, item inside and outside an event, 404); `lint.mjs --app` 0 FAIL.
 
+## Round 4: less text, same density
+
+Goal: fewer words to read, the same information, and the common jobs one tap away.
+
+- **Icons instead of labels.** Call time, event time, guests, venue, phase, reporter and time render as icon + value (`src/components/meta.tsx`), with a screen-reader label behind each icon.
+- **An action bar for the frequent jobs** (`src/components/action-bar.tsx`) on Home and the event page: Scan, Report, call the Lead, Map.
+- **Hint sentences removed:** phase hints, the scanner's camera instruction and helper paragraph, the "scan results appear here" box, the photo hint, subtitles under page titles.
+- **The scanner viewfinder is the camera button,** and scan results show on top of it. Row "Report" text became a flag icon button. Result messages are a few words each ("Still out", "Wrong event · Don't load").
+- **Inventory status as count tiles** (All, Out, In, Check) that filter the list; categories became section headers instead of a second control row.
+- **Item facts as icon tiles** instead of a 4-row table; report details as one icon row under the title.
+- **The report form asks for less:** no title field (it is built from the category and item, or the first words of the description), the type is one icon and one word, and a damage note is optional.
+
+Taps to the frequent jobs, from Home:
+
+| Job | Before | After |
+|---|---|---|
+| Scan the live event | 1 | 1 |
+| Report a problem | 2 (Reports → Report) | 1 |
+| Call the event lead | 3+ (event → Info tab → scroll to contacts) | 1 |
+| Open the venue in Maps | 3 (event → Info tab → Open Maps) | 1 |
+
+Visible words (first screen / whole page) at 390px:
+
+| Screen | Before | After |
+|---|---|---|
+| Home | 92 / 107 | 90 / 93 |
+| Event detail | 85 / 237 | 94 / 217 |
+| Scanner | 70 / 114 | 55 / 68 |
+| Items | 96 / 263 | 90 / 302 |
+| Item detail | 66 / 66 | 54 / 54 |
+| Report detail | 87 / 91 | 86 / 86 |
+| New report | 49 / 62 | 36 / 36 |
+| Profile | 62 / 67 | 47 / 52 |
+
+The event page's first screen holds more words because more of the page now fits on it: the header, actions, Now/Next, the phase and the tabs, where the tabs used to start below the fold. Items has more words in total because each category now has a header.
+
+`inspect.mjs --app`: 0 FAIL / 0 WARN on 19 screen states. `lint.mjs --app`: 0 FAIL.
+
 ## Not covered
 
 - The inspector's desktop width (1440) was skipped: Kru is a phone app shown in a 440px column on larger screens.
