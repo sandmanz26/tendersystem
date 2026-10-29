@@ -20,6 +20,10 @@ npm run build
 | Report damaged/missing items | From the scanner (*Report* button), the item page, or the report form |
 | Who's involved | **Team** tab: in-house crew (lead marked) + vendors, with WhatsApp/call buttons |
 
+## Spec
+
+Features, data model, architecture and the path to production: [`docs/feature-and-tech-spec.md`](docs/feature-and-tech-spec.md).
+
 ## Design
 
 The UI follows the [taste-skill](https://github.com/Leonxlnx/taste-skill) app-screen rules, style **accent-ladder** (seed 1493120158). See [`docs/design-review.md`](docs/design-review.md) for the decisions and the before/after measurements.
