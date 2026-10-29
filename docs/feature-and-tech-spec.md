@@ -229,7 +229,26 @@ Camera scanning needs a secure context (HTTPS or localhost).
 - TypeScript build with no errors; oxlint with no errors.
 - An end-to-end Playwright run at 390 × 844 covering every scan outcome, undo, offline queue and sync, phase close with checklist and signed handover, report validation, report submit, with no console errors.
 - taste-skill `inspect.mjs --app` (0 FAIL / 0 WARN on 19 screen states at 390 and 768 px) and `lint.mjs --app` (0 FAIL).
-- There is no automated test suite in the repo yet.
+- The web app has no automated test suite in the repo yet; the mobile app has a Jest suite (§3.10).
+
+### 3.10 React Native app (`mobile/`)
+
+A native version with the same features, data and design, in TypeScript on **React Native 0.77.2** (React 18.3.1, TypeScript 5.0.4, New Architecture and Hermes on). Details and run steps: [`mobile/README.md`](../mobile/README.md).
+
+| Concern | Web (`src/`) | Mobile (`mobile/`) |
+|---|---|---|
+| Navigation | React Router `HashRouter` | React Navigation 7: bottom tabs + native stack; Scanner and New report as full-screen modals |
+| Scanning | `BarcodeDetector` | react-native-vision-camera 4.6.4 `useCodeScanner` (QR, Code 128, Code 39, EAN-13) |
+| Scan validation | inside the store | `mobile/src/core/scan.ts`, one pure function, unit tested |
+| Persistence | `localStorage` | AsyncStorage (`kru:state:v1`) |
+| Online state | browser events | NetInfo |
+| Photos | data URLs | image-picker file URIs, 960 px |
+| Signature | PNG data URL | SVG path data + pad size (`Handover.signatureSize`) |
+| Tests | Playwright run (not in repo) | Jest, 33 tests: scan outcomes, gates, whereabouts, offline queue, every screen renders |
+
+Shared domain code (`types`, `phases`, `mock`, `progress`, `whereabouts`, `rundown`, `format`, `lookup`) is copied into `mobile/src/core/` with relative imports. Moving it into a shared package is the next step once a backend exists.
+
+The mobile app has been type-checked, linted, tested with Jest, and bundled for both platforms. It has not been run on a device yet, because the build environment has no Android SDK or Xcode.
 
 ## 4. Limits of the prototype
 

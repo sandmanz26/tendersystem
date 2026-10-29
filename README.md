@@ -8,6 +8,15 @@ npm run dev     # http://localhost:5173
 npm run build
 ```
 
+### React Native app
+
+A native version (React Native 0.77.2, TypeScript) lives in [`mobile/`](mobile/README.md):
+
+```bash
+cd mobile && npm install
+npm run android   # or: cd ios && bundle exec pod install && cd .. && npm run ios
+```
+
 ## Features
 
 | Need | Where |
