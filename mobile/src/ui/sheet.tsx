@@ -50,8 +50,8 @@ const styles = StyleSheet.create({
   wrap: { flex: 1, justifyContent: "flex-end" },
   sheet: {
     backgroundColor: color.surface,
-    borderTopLeftRadius: radius.card * 2,
-    borderTopRightRadius: radius.card * 2,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
     maxHeight: "85%",
   },
   grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: color.border, marginTop: 8 },

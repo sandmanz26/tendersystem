@@ -1,143 +1,193 @@
-export type PhaseKey = "load_out" | "arrive" | "setup" | "show" | "load_in" | "return"
+/*
+ * EMI domain model, field names as in the web app (PRD-TECHNICAL-SYSTEM-SCHEMA §3).
+ * Items are joined by name, events by eventKey, exactly like the web today.
+ */
 
-export interface Phase {
-  key: PhaseKey
-  label: string
-  short: string
-  requiresScan: boolean
-  hint: string
-  /** Checklist that must be ticked before a non-scan phase can close. */
-  tasks?: string[]
-  /** Phase closes only with a signed handover from this party. */
-  handover?: { party: string; hint: string }
+export type Role = "Admin" | "Staff" | "Viewer"
+
+export interface User {
+  id: number
+  name: string
+  email: string
+  password: string
+  role: Role
+  status: "active" | "inactive"
 }
 
-export type AssetCategory =
-  | "Furniture"
-  | "Decor"
-  | "Lighting"
-  | "Sound"
-  | "Linen"
-  | "Tableware"
-  | "Flowers & Props"
-
-export type AssetCondition = "Good" | "Needs check" | "Damaged"
-
-export interface Asset {
-  /** Printed on the QR label, e.g. KRS-TFG-01 */
+/** One step of the configurable event pipeline (Master Data → Event Status). */
+export interface Stage {
+  id: number
+  order: number
   code: string
+  status: string
+  scan: "None" | "Scan"
+  cuttingStock: boolean
+  stockReturn: boolean
+  productionItem: boolean
+  checkOwnership: boolean
+  allowDelete: boolean
+  loanItem: boolean
+  outsourceItem: boolean
+  /** Postphone / Disable: a hold status, not a pipeline step (owner decision pending; see docs). */
+  hold?: boolean
+}
+
+export interface Item {
+  id: number
   name: string
-  category: AssetCategory
-  /** What one scan represents, e.g. "1 pallet · 40 chairs" */
-  unit: string
-  location: string
-  condition: AssetCondition
-  dimensions?: string
-  lastChecked: string
-  notes?: string
-}
-
-export interface Person {
-  id: string
-  name: string
-  role: string
-  phone: string
-  company?: string
-}
-
-export interface CrewAssignment {
-  personId: string
-  duty: string
-  lead?: boolean
-}
-
-export interface RundownItem {
-  time: string
-  label: string
-  crewNote?: string
-}
-
-export interface WeddingEvent {
-  id: string
-  couple: string
-  kind: string
-  date: string // yyyy-mm-dd
-  callTime: string
-  startTime: string
-  endTime: string
-  guests: number
-  theme: string
-  venue: {
-    name: string
-    address: string
-    area: string
-    loadingNote: string
-    pic: { name: string; phone: string }
-  }
-  client: { name: string; relation: string; phone: string }
-  notes: string[]
-  assetCodes: string[]
-  crew: CrewAssignment[]
-  rundown: RundownItem[]
-  /** Index into PHASES. PHASES.length means the event is fully closed. */
-  phaseIndex: number
-}
-
-export interface ScanRecord {
-  at: string // ISO
-  by: string // personId
-  /** false while the device is offline; flips once the queue is pushed. */
-  synced?: boolean
-  /** Scanned here although it never got a scan in the previous scan phase. */
-  skippedPrevious?: boolean
-}
-
-/** scans[eventId][phaseKey][assetCode] */
-export type ScanBook = Record<string, Partial<Record<PhaseKey, Record<string, ScanRecord>>>>
-
-export type ReportKind = "issue" | "damage"
-export type ReportStatus = "Open" | "In progress" | "Resolved"
-export type Severity = "Low" | "Medium" | "High"
-
-export interface ReportUpdate {
-  at: string
-  by: string
-  text: string
-}
-
-export interface Report {
-  id: string
-  eventId: string
-  kind: ReportKind
-  /** Issue category, or damage type (Minor damage / Major damage / Missing) */
+  sku: string
   category: string
-  assetCode?: string
-  /** Phase the report was filed in; a damage report clears that asset for the phase gate. */
-  phase: PhaseKey
-  severity: Severity
-  title: string
-  description: string
-  photos: string[]
-  status: ReportStatus
-  createdAt: string
-  by: string
-  updates: ReportUpdate[]
-  synced?: boolean
+  unit: string
+  itemValue: number
+  homeWarehouse: string
 }
 
-export interface Handover {
+export interface Warehouse {
+  id: number
   name: string
-  party: string
-  /** SVG path data of the drawn signature */
-  signature: string
-  /** Size of the pad the path was drawn on, to scale it back. */
-  signatureSize?: { width: number; height: number }
-  note?: string
+  location: string
+  pic: string
 }
 
-export interface PhaseLogEntry {
-  phase: PhaseKey
-  at: string
+export type MinStatus = "Not Set" | "Safe" | "Warning" | "Critical"
+
+/** Stock of one item in one warehouse. THE stock source. */
+export interface WhRow {
+  id: number
+  name: string
+  warehouseName: string
+  itemStock: number
+  stokMin: number
+  valuation: number
+  asile: string | number
+  rack: string | number
+  level: string | number
+}
+
+export interface Movement {
+  id: number
+  at: string // ISO
+  itemName: string
+  warehouse: string
+  change: number
+  before: number
+  after: number
+  reason: string
+  note?: string
   by: string
-  handover?: Handover
+}
+
+export interface EmiEvent {
+  id: number
+  name: string
+  code: string
+  desc?: string
+  start: string // ISO date
+  finish: string
+  /** Event date = load-in / preparation day. */
+  date: string
+  location: string
+  address?: string
+  pic: string
+}
+
+export type Ownership = "IHC" | "IHP" | "Outsource"
+
+export interface EventLine {
+  id: number
+  name: string
+  qty: number
+  area: string
+  subArea: string
+  /** Stage at which the line was added. */
+  stage: string
+  pic: string
+  ownership: Ownership
+  warehouseItem: boolean
+  warehouse?: string
+  groupId: number | null
+  checked: boolean
+  scanIn: string | null // ISO
+  scanOut: string | null
+  note: string
+  brokenQty?: number
+  brokenNote?: string
+  brokenReportedBy?: string
+  brokenReportedAt?: string
+  brokenPhotos?: string[]
+  brokenWrittenOff?: number
+  stockReturned?: boolean
+  resolution?: "returned"
+  fromLoan?: boolean
+  fromOutsource?: boolean
+  fromProduction?: boolean
+  fromConvert?: boolean
+  loanVendor?: string
+}
+
+/** A box: one QR on the box checks in every line inside. */
+export interface Package {
+  id: number
+  name: string
+  itemIds: number[]
+}
+
+/** Stored values; the label depends on the kind (Rent: Rented / Returned, Outsource: Received / Completed). */
+export type RentalStatus = "Requested" | "Borrowed" | "Returned"
+export type RentalKind = "loan" | "outsource"
+
+export interface Rental {
+  id: number
+  kind: RentalKind
+  /** Event record; absent for a rental kept in a warehouse. */
+  eventKey?: string
+  itemName: string
+  qty: number
+  unit: string
+  area?: string
+  subArea?: string
+  warehouse?: string
+  purpose?: string
+  vendorName: string
+  startDate: string
+  dueDate: string
+  /** Per unit, for the whole period. */
+  rentalCost: number
+  status: RentalStatus
+  borrowedAt: string | null
+  returnedAt: string | null
+  note: string
+}
+
+export type Closing = "on-going" | "checking-inventory" | "returned-completed" | "transferred"
+
+export interface OpnameLine {
+  rowId: number
+  name: string
+  before: number
+  after: number
+  diff: number
+  condition: "Good" | "Poor"
+  note: string
+  valuation: number
+}
+
+export interface Opname {
+  id: number
+  appliedAt: string
+  appliedBy: string
+  warehouse: string
+  countedCount: number
+  status: "Pending" | "Approved" | "Rejected"
+  resolvedAt?: string
+  resolvedBy?: string
+  items: OpnameLine[]
+}
+
+/** Something done offline, waiting to be sent. */
+export interface OutboxEntry {
+  id: string
+  at: string
+  kind: "scan" | "broken" | "stage" | "rental" | "opname" | "line" | "closing"
+  label: string
 }

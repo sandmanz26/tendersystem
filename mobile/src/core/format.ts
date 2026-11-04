@@ -1,76 +1,76 @@
-// en-GB keeps day-month order ("20 October"), which is what the crew is used to.
-const TZ_LOCALE = "en-GB"
+/*
+ * Indonesian number style (dot thousands, comma decimals) and the web's date
+ * shapes. Written by hand instead of toLocaleString('id-ID') so the output is
+ * the same on Hermes, JSC and Node.
+ */
 
-export function parseDate(date: string) {
-  const [y, m, d] = date.split("-").map(Number)
-  return new Date(y, m - 1, d)
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+/** 12500 → "12.500", 78.5 → "78,5" */
+export function fmtNum(n: number, maxFractionDigits = 2) {
+  const neg = n < 0
+  const [int, frac] = Math.abs(n).toFixed(maxFractionDigits).split(".")
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+  const decimals = frac?.replace(/0+$/, "")
+  return `${neg ? "−" : ""}${grouped}${decimals ? `,${decimals}` : ""}`
 }
 
-export function dayDiff(date: string) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return Math.round((parseDate(date).getTime() - today.getTime()) / 86_400_000)
+/** "Rp1.443.680.000" (no space), as on the web. */
+export const formatIDR = (n: number) => `Rp${fmtNum(Math.round(n), 0)}`
+
+/** Shorthand for big totals: "Rp597 jt", "Rp1,4 M". */
+export function shortIDR(n: number) {
+  if (Math.abs(n) >= 1e9) return `Rp${fmtNum(n / 1e9, 1)} M`
+  if (Math.abs(n) >= 1e6) return `Rp${fmtNum(n / 1e6, 1)} jt`
+  return formatIDR(n)
 }
 
-export function relativeDay(date: string) {
-  const diff = dayDiff(date)
-  if (diff === 0) return "Today"
-  if (diff === 1) return "Tomorrow"
-  if (diff === -1) return "Yesterday"
-  if (diff > 1 && diff < 7) return `In ${diff} days`
-  if (diff < -1 && diff > -7) return `${-diff} days ago`
-  return formatDate(date, { day: "numeric", month: "short" })
+function parse(iso: string) {
+  // Business dates are plain YYYY-MM-DD: read them as local days, not UTC midnight.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    const [y, m, d] = iso.split("-").map(Number)
+    return new Date(y, m - 1, d)
+  }
+  return new Date(iso)
 }
 
-export function formatDate(date: string, opts: Intl.DateTimeFormatOptions) {
-  return parseDate(date).toLocaleDateString(TZ_LOCALE, opts)
+/** "09 Apr 2026" */
+export function fmtDate(iso: string) {
+  const d = parse(iso)
+  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 
-export function longDate(date: string) {
-  return formatDate(date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+/** "09 Apr" */
+export function fmtDay(iso: string) {
+  const d = parse(iso)
+  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]}`
 }
 
-export function clock(iso: string) {
-  return new Date(iso).toLocaleTimeString(TZ_LOCALE, { hour: "2-digit", minute: "2-digit", hour12: false })
-}
-
-export function timeAgo(iso: string) {
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
-  if (mins < 1) return "just now"
-  if (mins < 60) return `${mins} min ago`
-  const hours = Math.round(mins / 60)
-  if (hours < 24) return `${hours} h ago`
-  const days = Math.round(hours / 24)
-  if (days < 7) return `${days} d ago`
-  return new Date(iso).toLocaleDateString(TZ_LOCALE, { day: "numeric", month: "short" })
-}
-
+/** "09 Apr 2026, 10:05" (ledger / broken report stamp) */
 export function stamp(iso: string) {
-  const d = new Date(iso)
-  const today = new Date()
-  const sameDay = d.toDateString() === today.toDateString()
-  const day = sameDay
-    ? "Today"
-    : d.toLocaleDateString(TZ_LOCALE, { day: "numeric", month: "short" })
-  return `${day}, ${clock(iso)}`
+  const d = parse(iso)
+  return `${fmtDate(iso)}, ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
 }
 
-export function initials(name: string) {
-  return name
-    .replace(/\(.*?\)/g, "")
-    .replace(/^(Pak|Bu|Ibu|Bapak|Mbak|Mas|Om|Teh)\s+/i, "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
+/** "10:05" */
+export function clock(iso: string) {
+  const d = parse(iso)
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
 }
 
-export function waLink(phone: string) {
-  return `https://wa.me/62${phone.replace(/^0/, "")}`
+/** "09–10 Apr 2026", "30 Mar – 02 Apr 2026" */
+export function fmtRange(start: string, finish: string) {
+  if (start === finish) return fmtDate(start)
+  const a = parse(start)
+  const b = parse(finish)
+  if (a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth())
+    return `${String(a.getDate()).padStart(2, "0")}–${fmtDate(finish)}`
+  return `${fmtDay(start)} – ${fmtDate(finish)}`
 }
 
-export function mapsLink(query: string) {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+/** Whole days from a to b (both YYYY-MM-DD). */
+export function daysBetween(a: string, b: string) {
+  return Math.round((parse(b).getTime() - parse(a).getTime()) / 86_400_000)
 }
+
+export const plural = (n: number, one: string, many = `${one}s`) => `${fmtNum(n)} ${n === 1 ? one : many}`

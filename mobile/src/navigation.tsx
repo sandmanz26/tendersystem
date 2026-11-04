@@ -1,47 +1,42 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
-import {
-  NavigationContainer,
-  DefaultTheme,
-  createNavigationContainerRef,
-  useNavigation,
-  type NavigatorScreenParams,
-} from "@react-navigation/native"
+import { NavigationContainer, DefaultTheme, createNavigationContainerRef, useNavigation, type NavigatorScreenParams } from "@react-navigation/native"
 import { createNativeStackNavigator, type NativeStackNavigationProp } from "@react-navigation/native-stack"
-import { CalendarDays, CircleUserRound, ClipboardList, Package, ScanLine, type LucideIcon } from "lucide-react-native"
+import { Boxes, CalendarRange, CircleUserRound, ClipboardCheck, ScanLine, type LucideIcon } from "lucide-react-native"
 import * as React from "react"
 import { Text, View } from "react-native"
 
-import type { ReportKind } from "./core/types"
 import { EventDetailScreen } from "./screens/EventDetail"
-import { HomeScreen } from "./screens/Home"
-import { InventoryScreen } from "./screens/Inventory"
+import { EventsScreen } from "./screens/Events"
 import { ItemDetailScreen } from "./screens/ItemDetail"
-import { NewReportScreen } from "./screens/NewReport"
+import { LoginScreen } from "./screens/Login"
+import { OpnameScreen } from "./screens/Opname"
+import { OpnameCountScreen } from "./screens/OpnameCount"
+import { OpnameDetailScreen } from "./screens/OpnameDetail"
 import { ProfileScreen } from "./screens/Profile"
-import { ReportDetailScreen } from "./screens/ReportDetail"
-import { ReportsScreen } from "./screens/Reports"
+import { RentalsScreen } from "./screens/Rentals"
 import { ScannerScreen } from "./screens/Scanner"
 import { ScanPickerScreen } from "./screens/ScanPicker"
+import { StockScreen } from "./screens/Stock"
 import { useAppStore } from "./store"
 import { color } from "./theme"
 
-export type EventTab = "info" | "items" | "team" | "reports"
-
 export type TabParamList = {
-  Home: undefined
-  Inventory: undefined
+  Events: undefined
   ScanPicker: undefined
-  Reports: undefined
+  Stock: undefined
+  Opname: undefined
   Profile: undefined
 }
 
 export type RootStackParamList = {
+  Login: undefined
   Tabs: NavigatorScreenParams<TabParamList> | undefined
-  EventDetail: { eventId: string; tab?: EventTab }
-  ItemDetail: { code: string; eventId?: string }
-  Scanner: { eventId: string }
-  NewReport: { eventId?: string; type?: ReportKind; assetCode?: string } | undefined
-  ReportDetail: { reportId: string }
+  EventDetail: { eventKey: string }
+  Scanner: { eventKey: string }
+  ItemDetail: { name: string }
+  Rentals: undefined
+  OpnameCount: { warehouse: string }
+  OpnameDetail: { id: number }
 }
 
 export type Nav = NativeStackNavigationProp<RootStackParamList>
@@ -59,33 +54,24 @@ const theme = {
 
 function tabIcon(Icon: LucideIcon, badge?: number) {
   return ({ focused }: { focused: boolean }) => (
-    <View
-      style={{
-        width: 56,
-        height: 28,
-        borderRadius: 6,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: focused ? color.brandSoft : "transparent",
-      }}
-    >
-      <Icon size={20} color={focused ? color.brand : color.muted} strokeWidth={1.75} />
+    <View style={{ width: 40, height: 26, alignItems: "center", justifyContent: "center" }}>
+      <Icon size={21} color={focused ? color.brand : color.muted} strokeWidth={focused ? 2.2 : 1.8} />
       {!!badge && (
         <View
           style={{
             position: "absolute",
-            top: -4,
-            right: 8,
+            top: -3,
+            right: 0,
             minWidth: 16,
             height: 16,
             borderRadius: 8,
             paddingHorizontal: 4,
-            backgroundColor: color.negative,
+            backgroundColor: color.red,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Text style={{ color: "#fff", fontSize: 11, fontWeight: "600" }}>{badge}</Text>
+          <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>{badge}</Text>
         </View>
       )}
     </View>
@@ -93,38 +79,46 @@ function tabIcon(Icon: LucideIcon, badge?: number) {
 }
 
 function Tabs() {
-  const { reports, userId } = useAppStore()
-  // Count only what needs action from this crew member: open reports others raised.
-  const open = reports.filter((r) => r.status === "Open" && r.by !== userId).length
+  const { opnames, user } = useAppStore()
+  // Admins see the opname waiting for their approval.
+  const pending = user?.role === "Admin" ? opnames.filter((o) => o.status === "Pending").length : 0
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: color.ink,
+        tabBarActiveTintColor: color.brand,
         tabBarInactiveTintColor: color.muted,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: "500" },
-        tabBarStyle: { borderTopColor: color.border, height: 64, paddingTop: 6 },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
+        tabBarStyle: { borderTopColor: color.border, height: 62, paddingTop: 6 },
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Events", tabBarIcon: tabIcon(CalendarDays) }} />
-      <Tab.Screen name="Inventory" component={InventoryScreen} options={{ title: "Items", tabBarIcon: tabIcon(Package) }} />
+      <Tab.Screen name="Events" component={EventsScreen} options={{ tabBarIcon: tabIcon(CalendarRange) }} />
       <Tab.Screen name="ScanPicker" component={ScanPickerScreen} options={{ title: "Scan", tabBarIcon: tabIcon(ScanLine) }} />
-      <Tab.Screen name="Reports" component={ReportsScreen} options={{ title: "Reports", tabBarIcon: tabIcon(ClipboardList, open) }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: "Profile", tabBarIcon: tabIcon(CircleUserRound) }} />
+      <Tab.Screen name="Stock" component={StockScreen} options={{ tabBarIcon: tabIcon(Boxes) }} />
+      <Tab.Screen name="Opname" component={OpnameScreen} options={{ tabBarIcon: tabIcon(ClipboardCheck, pending) }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: tabIcon(CircleUserRound) }} />
     </Tab.Navigator>
   )
 }
 
 export function RootNavigator() {
+  const { user } = useAppStore()
   return (
     <NavigationContainer ref={navigationRef} theme={theme}>
       <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.ground } }}>
-        <Stack.Screen name="Tabs" component={Tabs} />
-        <Stack.Screen name="EventDetail" component={EventDetailScreen} />
-        <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
-        <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
-        <Stack.Screen name="Scanner" component={ScannerScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
-        <Stack.Screen name="NewReport" component={NewReportScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom", gestureEnabled: false }} />
+        {!user ? (
+          <Stack.Screen name="Login" component={LoginScreen} />
+        ) : (
+          <>
+            <Stack.Screen name="Tabs" component={Tabs} />
+            <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+            <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
+            <Stack.Screen name="Rentals" component={RentalsScreen} />
+            <Stack.Screen name="OpnameDetail" component={OpnameDetailScreen} />
+            <Stack.Screen name="OpnameCount" component={OpnameCountScreen} options={{ gestureEnabled: false }} />
+            <Stack.Screen name="Scanner" component={ScannerScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   )

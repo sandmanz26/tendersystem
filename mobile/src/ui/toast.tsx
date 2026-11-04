@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     maxWidth: 420,
   },
-  error: { backgroundColor: color.negative },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.brandOnDark },
+  error: { backgroundColor: color.red },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#34d399" },
   text: { color: "#fff", fontSize: font.small, fontWeight: "500" },
 })

@@ -1,297 +1,196 @@
-import {
-  Armchair,
-  ChevronLeft,
-  ChevronRight,
-  CloudOff,
-  Flower2,
-  Lamp,
-  MessageCircle,
-  PackageX,
-  Phone,
-  RefreshCw,
-  Shirt,
-  Sparkles,
-  Speaker,
-  TriangleAlert,
-  Wine,
-  type LucideIcon,
-} from "lucide-react-native"
+import { Check, ChevronLeft, ChevronRight, CloudOff, Package as Box, RefreshCw, TriangleAlert } from "lucide-react-native"
 import * as React from "react"
-import { Linking, Pressable, StyleSheet, Text as RNText, View, type StyleProp, type ViewStyle } from "react-native"
+import { Pressable, Text as RNText, View, type StyleProp, type ViewStyle } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import Svg, { Defs, Line, Pattern, Rect } from "react-native-svg"
 
-import { initials, timeAgo, waLink } from "../core/format"
-import { PHASES } from "../core/phases"
-import type { PhaseProgress } from "../core/progress"
-import type { AssetCategory, Person, Report, ReportStatus, Severity } from "../core/types"
+import { fmtNum } from "../core/format"
+import { CLOSING_LABEL, isWaiting, minStatus, pipeline, type ClosingTab, type ScanMode } from "../core/rules"
+import type { EventLine, MinStatus, Ownership, Stage } from "../core/types"
 import { useAppStore } from "../store"
-import { color, font, radius, tabular } from "../theme"
-import { Badge, Text, type BadgeVariant } from "./primitives"
+import { color, font, mono, radius, tabular } from "../theme"
+import { Tag, Text, type Tone } from "./primitives"
 
-/* ---------- Manifest grid: the product's own element ---------- */
-
-type CellState = "scanned" | "flagged" | "reported" | "pending"
+/* ---------- Stage track: the event's pipeline at a glance ---------- */
 
 /**
- * One cell per manifest line (a pallet, a crate, a set). Filled when scanned,
- * hatched when reported, amber when it skipped a checkpoint, empty while pending.
+ * One segment per pipeline stage, labelled with the stage code (CBA, OPI…).
+ * Done = solid, current = indigo with a ring, ahead = empty. Scan stages get
+ * a notch so the crew sees where scanning sits.
  */
-export function ManifestGrid({
-  progress,
-  codes,
-  dark,
-  legend = true,
-  cellHeight = 24,
-  style,
-}: {
-  progress: PhaseProgress
-  codes: string[]
-  dark?: boolean
-  legend?: boolean
-  cellHeight?: number
-  style?: StyleProp<ViewStyle>
-}) {
-  const cells: CellState[] = codes.map((code) => {
-    const st = progress.byAsset[code]
-    if (st.state === "scanned") return progress.flagged.includes(code) ? "flagged" : "scanned"
-    if (st.state === "reported") return "reported"
-    return "pending"
-  })
-  const count = (s: CellState) => cells.filter((c) => c === s).length
-  const done = count("scanned") + count("flagged")
+export function StageTrack({ stages, current, style }: { stages: Stage[]; current: string; style?: StyleProp<ViewStyle> }) {
+  const steps = pipeline(stages)
+  const idx = steps.findIndex((s) => s.status === current)
   return (
-    <View style={style}>
-      <View
-        style={{ flexDirection: "row", gap: 3 }}
-        accessible
-        accessibilityRole="image"
-        accessibilityLabel={`${done} scanned, ${count("reported")} reported, ${count("pending")} to scan`}
-      >
-        {cells.map((s, i) => (
-          <Cell key={codes[i]} state={s} dark={dark} style={{ flex: 1, height: cellHeight }} />
+    <View style={style} accessibilityLabel={`Stage ${idx + 1} of ${steps.length}: ${current}`}>
+      <View style={{ flexDirection: "row", gap: 3 }}>
+        {steps.map((s, i) => (
+          <View key={s.id} style={{ flex: 1, gap: 5 }}>
+            <View
+              style={{
+                height: 6,
+                borderRadius: 2,
+                backgroundColor: i < idx ? color.brand : i === idx ? color.brand : color.raised,
+                opacity: i < idx ? 0.45 : 1,
+              }}
+            />
+            <RNText
+              style={[
+                { fontSize: 10.5, fontWeight: "700", letterSpacing: 0.4, color: i === idx ? color.brandInk : i < idx ? color.muted : color.faint, fontFamily: mono },
+              ]}
+            >
+              {s.code}
+              {s.scan === "Scan" ? "·" : ""}
+            </RNText>
+          </View>
         ))}
       </View>
-      {legend && (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 14, rowGap: 4, marginTop: 8 }}>
-          <Key state="scanned" dark={dark} label={`${done} done`} />
-          {count("reported") > 0 && <Key state="reported" dark={dark} label={`${count("reported")} reported`} />}
-          {count("flagged") > 0 && <Key state="flagged" dark={dark} label={`${count("flagged")} flagged`} />}
-          <Key state="pending" dark={dark} label={`${count("pending")} left`} />
-        </View>
-      )}
     </View>
   )
 }
 
-function Key({ state, dark, label }: { state: CellState; dark?: boolean; label: string }) {
+/* ---------- Tags ---------- */
+
+export const CLOSING_TONE: Record<ClosingTab, Tone> = {
+  upcoming: "neutral",
+  "on-going": "green",
+  "ready-to-close": "orange",
+  "checking-inventory": "brand",
+  "returned-completed": "green",
+  transferred: "purple",
+}
+
+export const ClosingTag = ({ tab }: { tab: ClosingTab }) => <Tag label={CLOSING_LABEL[tab]} tone={CLOSING_TONE[tab]} />
+
+const OWNERSHIP_TONE: Record<Ownership, Tone> = { IHC: "outline", IHP: "purple", Outsource: "orange" }
+export const OwnershipTag = ({ o }: { o: Ownership }) => <Tag label={o} tone={OWNERSHIP_TONE[o]} />
+
+const MIN_TONE: Record<MinStatus, Tone> = { "Not Set": "neutral", Safe: "green", Warning: "orange", Critical: "red" }
+export const MinTag = ({ stock, min }: { stock: number; min: number }) => {
+  const s = minStatus(stock, min)
+  return <Tag label={s} tone={MIN_TONE[s]} />
+}
+
+/** Where a line came from, when it isn't plain warehouse stock. */
+export function originOf(l: EventLine): { label: string; tone: Tone } | null {
+  if (l.fromLoan) return { label: "Rented", tone: "orange" }
+  if (l.fromOutsource) return { label: "Outsourced", tone: "orange" }
+  if (l.fromProduction) return { label: "Production", tone: "purple" }
+  if (l.fromConvert) return { label: "Converted", tone: "purple" }
+  return null
+}
+
+/* ---------- Scan mark: two small boxes, IN and OUT ---------- */
+
+function Mark({ on, label, active }: { on: boolean; label: string; active: boolean }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-      <Cell state={state} dark={dark} style={{ width: 12, height: 12 }} />
-      <RNText style={{ fontSize: font.meta, color: dark ? "rgba(255,255,255,0.75)" : color.muted, ...tabular }}>{label}</RNText>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 2,
+        paddingHorizontal: 4,
+        height: 20,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: on ? color.green : active ? color.brand : color.border,
+        backgroundColor: on ? color.greenSoft : color.surface,
+        borderStyle: on || active ? "solid" : "dashed",
+      }}
+    >
+      {on && <Check size={10} color={color.greenInk} strokeWidth={3} />}
+      <RNText style={{ fontSize: 10, fontWeight: "700", color: on ? color.greenInk : active ? color.brandInk : color.faint, letterSpacing: 0.3 }}>{label}</RNText>
     </View>
   )
 }
 
-function Cell({ state, dark, style }: { state: CellState; dark?: boolean; style: ViewStyle }) {
-  const hue = dark ? color.brandOnDark : color.brand
-  const base: ViewStyle = { borderRadius: 2, overflow: "hidden" }
-  if (state === "scanned") return <View style={[base, style, { backgroundColor: hue }]} />
-  if (state === "flagged") return <View style={[base, style, { backgroundColor: color.amber }]} />
-  if (state === "pending")
-    return (
-      <View
-        style={[base, style, { borderWidth: 1, borderColor: dark ? "rgba(255,255,255,0.3)" : color.control, backgroundColor: dark ? "transparent" : color.surface }]}
-      />
-    )
+export function ScanMarks({ line, mode }: { line: EventLine; mode: ScanMode | null }) {
   return (
-    <View style={[base, style, { borderWidth: 1, borderColor: hue }]}>
-      <Svg width="100%" height="100%">
-        <Defs>
-          <Pattern id="hatch" width={4} height={4} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <Line x1={0} y1={0} x2={0} y2={4} stroke={hue} strokeWidth={1.5} />
-          </Pattern>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#hatch)" />
-      </Svg>
+    <View style={{ flexDirection: "row", gap: 3 }} accessibilityLabel={`Scan in ${line.scanIn ? "done" : "pending"}, scan out ${line.scanOut ? "done" : "pending"}`}>
+      <Mark on={!!line.scanIn} label="IN" active={mode === "in"} />
+      <Mark on={!!line.scanOut} label="OUT" active={mode === "out"} />
     </View>
   )
 }
 
-/* ---------- Phase track ---------- */
+/* ---------- Line row ---------- */
 
-export function PhaseTrack({ index, dark, labels = true, style }: { index: number; dark?: boolean; labels?: boolean; style?: StyleProp<ViewStyle> }) {
-  return (
-    <View style={[{ flexDirection: "row", gap: 4 }, style]} accessibilityLabel={`Phase ${Math.min(index + 1, PHASES.length)} of ${PHASES.length}`}>
-      {PHASES.map((p, i) => {
-        const done = i < index
-        const current = i === index
-        return (
-          <View key={p.key} style={{ flex: 1, gap: 6 }}>
-            <View style={{ height: 6, borderRadius: 2, backgroundColor: dark ? "rgba(255,255,255,0.15)" : "#ebe4e7", overflow: "hidden" }}>
-              <View
-                style={{
-                  height: "100%",
-                  width: done ? "100%" : current ? "50%" : "0%",
-                  backgroundColor: dark ? color.brandOnDark : color.brand,
-                }}
-              />
-            </View>
-            {labels && (
-              <RNText
-                numberOfLines={1}
-                style={{
-                  fontSize: font.tiny,
-                  color: current ? (dark ? "#fff" : color.ink) : dark ? "rgba(255,255,255,0.7)" : color.muted,
-                  fontWeight: current ? "600" : "400",
-                }}
-              >
-                {p.short}
-              </RNText>
-            )}
-          </View>
-        )
-      })}
-    </View>
-  )
-}
-
-/* ---------- Category icon: one grey outline set ---------- */
-
-const CATEGORY_ICONS: Record<AssetCategory, LucideIcon> = {
-  Furniture: Armchair,
-  Decor: Sparkles,
-  Lighting: Lamp,
-  Sound: Speaker,
-  Linen: Shirt,
-  Tableware: Wine,
-  "Flowers & Props": Flower2,
-}
-
-export function CategoryIcon({ category, size = 18 }: { category: AssetCategory; size?: number }) {
-  const Icon = CATEGORY_ICONS[category]
-  return <Icon size={size} color={color.muted} strokeWidth={1.6} />
-}
-
-/* ---------- People ---------- */
-
-const TONES = [
-  ["#e3f1e8", "#2f5e43"],
-  ["#f6e8da", "#7a4a1f"],
-  ["#e4ebf5", "#33496b"],
-  ["#f3efd6", "#6b5c1d"],
-  ["#f6e1e3", "#7a2e38"],
-]
-
-export function Avatar({ person, size = 40 }: { person: Person; size?: number }) {
-  const [bg, fg] = TONES[Number(person.id.replace(/\D/g, "") || 0) % TONES.length]
-  return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, alignItems: "center", justifyContent: "center" }}>
-      <RNText style={{ color: fg, fontWeight: "600", fontSize: size * 0.32 }}>{initials(person.name)}</RNText>
-    </View>
-  )
-}
-
-export function PersonRow({ person, detail, badge, isYou }: { person: Person; detail?: string; badge?: React.ReactNode; isYou?: boolean }) {
-  return (
-    <View style={styles.row}>
-      <Avatar person={person} />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Text variant="strong" numberOfLines={1} style={{ flexShrink: 1 }}>
-            {person.name}
-          </Text>
-          {isYou && <Text variant="meta">(you)</Text>}
-          {badge}
-        </View>
-        <Text variant="meta" numberOfLines={1}>
-          {detail ?? person.role}
-          {person.company ? ` · ${person.company}` : ""}
-        </Text>
-      </View>
-      {!isYou && (
-        <View style={{ flexDirection: "row", gap: 6 }}>
-          <IconButton icon={MessageCircle} label={`WhatsApp ${person.name}`} onPress={() => Linking.openURL(waLink(person.phone)).catch(() => {})} />
-          <IconButton icon={Phone} label={`Call ${person.name}`} onPress={() => Linking.openURL(`tel:${person.phone}`).catch(() => {})} />
-        </View>
-      )}
-    </View>
-  )
-}
-
-export function IconButton({ icon: Icon, label, onPress, tone = "light" }: { icon: LucideIcon; label: string; onPress?: () => void; tone?: "light" | "dark" }) {
-  const dark = tone === "dark"
+export function LineRow({
+  line,
+  unit,
+  mode,
+  onPress,
+  right,
+  boxName,
+}: {
+  line: EventLine
+  unit?: string
+  mode: ScanMode | null
+  onPress?: () => void
+  right?: React.ReactNode
+  boxName?: string
+}) {
+  const origin = originOf(line)
+  const waiting = mode ? isWaiting(line, mode) : false
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
       onPress={onPress}
-      hitSlop={4}
-      style={({ pressed }) => [
-        { width: 40, height: 40, borderRadius: radius.control, alignItems: "center", justifyContent: "center" },
-        dark ? { borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" } : { backgroundColor: color.raised },
-        pressed && { opacity: 0.8 },
-      ]}
+      accessibilityRole={onPress ? "button" : undefined}
+      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 11 }, pressed && onPress && { backgroundColor: color.raised }]}
     >
-      <Icon size={18} color={dark ? "#fff" : color.ink} strokeWidth={1.75} />
+      {/* Qty first: what the crew counts. */}
+      <View style={{ width: 44, alignItems: "flex-end" }}>
+        <Text style={[{ fontSize: 17, fontWeight: "700", color: waiting ? color.ink : color.ink2 }, tabular]}>{fmtNum(line.qty)}</Text>
+        <Text variant="tiny" numberOfLines={1}>
+          {unit ?? "pcs"}
+        </Text>
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <Text variant="strong" numberOfLines={1} style={{ fontSize: 15 }}>
+          {line.name}
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+          {/* A rented/outsourced line is Outsource by definition: show where it came from instead. */}
+          {line.ownership !== "IHC" && !origin && <OwnershipTag o={line.ownership} />}
+          {origin && <Tag label={origin.label} tone={origin.tone} />}
+          {(line.brokenQty ?? 0) > 0 && <Tag label={`Broken item · ${line.brokenQty}`} tone="red" icon={TriangleAlert} />}
+          {line.stockReturned && <Tag label="Stock returned" tone="green" />}
+          {line.resolution === "returned" && <Tag label="Returned" tone="green" />}
+          {boxName && <Tag label={boxName} tone="neutral" icon={Box} />}
+          <Text variant="tiny" numberOfLines={1} style={{ flexShrink: 1 }}>
+            {[line.subArea, line.pic].filter(Boolean).join(" · ")}
+          </Text>
+        </View>
+      </View>
+      {right ?? <ScanMarks line={line} mode={mode} />}
+      {onPress && <ChevronRight size={16} color={color.faint} />}
     </Pressable>
   )
 }
 
-/* ---------- Reports ---------- */
-
-/* Open needs someone's attention (the hue's tint); red is kept for failures. */
-export const STATUS_VARIANT: Record<ReportStatus, BadgeVariant> = {
-  Open: "accent",
-  "In progress": "warning",
-  Resolved: "neutral",
-}
-
-export const SEVERITY_DOT: Record<Severity, string> = {
-  Low: color.faint,
-  Medium: color.warning,
-  High: color.negative,
-}
-
-export function ReportRow({ report, eventName, onPress }: { report: Report; eventName?: string; onPress: () => void }) {
-  const Icon = report.kind === "damage" ? PackageX : TriangleAlert
+/** Thin bar: share of lines done for the current scan. */
+export function ScanBar({ done, total, dark, style }: { done: number; total: number; dark?: boolean; style?: StyleProp<ViewStyle> }) {
+  const pct = total ? done / total : 0
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.row, { alignItems: "flex-start" }, pressed && { backgroundColor: color.raised }]}>
-      <Icon size={18} color={report.kind === "damage" ? color.warning : color.muted} strokeWidth={1.6} style={{ marginTop: 2 }} />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-          <Text variant="strong" style={{ flex: 1, fontSize: 15 }} numberOfLines={2}>
-            {report.title}
-          </Text>
-          <Badge label={report.status} variant={STATUS_VARIANT[report.status]} />
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: report.status === "Resolved" ? color.faint : SEVERITY_DOT[report.severity] }} />
-          <Text variant="meta" numberOfLines={1} style={{ flexShrink: 1 }}>
-            {report.category}
-            {eventName ? ` · ${eventName}` : ""} · {timeAgo(report.createdAt)}
-          </Text>
-          {report.synced === false && <CloudOff size={12} color={color.warning} />}
-        </View>
-      </View>
-      <ChevronRight size={16} color={color.muted} style={{ marginTop: 2 }} />
-    </Pressable>
+    <View style={[{ height: 4, borderRadius: 2, backgroundColor: dark ? "rgba(255,255,255,0.14)" : color.raised, overflow: "hidden" }, style]}>
+      <View style={{ width: `${pct * 100}%`, height: "100%", backgroundColor: pct === 1 ? color.green : dark ? "#818cf8" : color.brand }} />
+    </View>
   )
 }
 
 /* ---------- Header and sync status ---------- */
 
 export function SyncStatus({ dark }: { dark?: boolean }) {
-  const { online, pendingSync } = useAppStore()
-  if (online && pendingSync === 0) return null
-  const fg = online ? (dark ? "#fff" : color.brandInk) : dark ? "#fcd34d" : color.pillWarningInk
-  const bg = online ? (dark ? "rgba(255,255,255,0.1)" : color.brandSoft) : dark ? "#3a2a10" : color.pillWarningBg
+  const { online, outbox } = useAppStore()
+  const n = outbox.length
+  if (online && n === 0) return null
+  const fg = online ? (dark ? "#c7d2fe" : color.brandInk) : dark ? "#fdba74" : color.orangeInk
+  const bg = online ? (dark ? "rgba(255,255,255,0.08)" : color.brandSoft) : dark ? "#3a2410" : color.orangeSoft
   const Icon = online ? RefreshCw : CloudOff
   return (
-    <View accessibilityRole="alert" style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: bg, paddingHorizontal: 16, paddingVertical: 8 }}>
-      <Icon size={14} color={fg} />
-      <RNText style={{ color: fg, fontSize: font.meta, fontWeight: "500" }}>
-        {online ? `Syncing ${pendingSync}…` : pendingSync > 0 ? `Offline · ${pendingSync} queued on this phone` : "Offline · still works, saves on this phone"}
+    <View accessibilityRole="alert" style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: bg, paddingHorizontal: 16, paddingVertical: 7 }}>
+      <Icon size={13} color={fg} />
+      <RNText style={{ color: fg, fontSize: font.meta, fontWeight: "600" }}>
+        {online ? `Sending ${n}…` : n > 0 ? `Offline · ${n} waiting to send` : "Offline · changes are kept on this phone"}
       </RNText>
     </View>
   )
@@ -313,12 +212,16 @@ export function Header({
 }) {
   const insets = useSafeAreaInsets()
   return (
-    <View style={{ backgroundColor: color.ground, paddingTop: insets.top, borderBottomWidth: large ? 0 : 1, borderBottomColor: color.border }}>
+    <View style={{ backgroundColor: large ? color.ground : color.surface, paddingTop: insets.top, borderBottomWidth: large ? 0 : 1, borderBottomColor: color.border }}>
       <SyncStatus />
       {large ? (
-        <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10, gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, gap: 12 }}>
           <View style={{ flex: 1 }}>
-            {subtitle && <Text variant="small" muted>{subtitle}</Text>}
+            {subtitle && (
+              <Text variant="label" style={{ marginBottom: 2 }}>
+                {subtitle.toUpperCase()}
+              </Text>
+            )}
             <Text variant="title" accessibilityRole="header">
               {title}
             </Text>
@@ -326,17 +229,21 @@ export function Header({
           {right}
         </View>
       ) : (
-        <View style={{ flexDirection: "row", alignItems: "center", height: 56, paddingHorizontal: 8, gap: 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", height: 54, paddingHorizontal: 6, gap: 4 }}>
           {onBack && (
             <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} hitSlop={8} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
               <ChevronLeft size={24} color={color.ink} />
             </Pressable>
           )}
-          <View style={{ flex: 1, minWidth: 0, paddingLeft: onBack ? 0 : 8 }}>
+          <View style={{ flex: 1, minWidth: 0, paddingLeft: onBack ? 0 : 10 }}>
             <Text variant="strong" numberOfLines={1} accessibilityRole="header">
               {title}
             </Text>
-            {subtitle && <Text variant="meta" numberOfLines={1}>{subtitle}</Text>}
+            {subtitle && (
+              <Text variant="tiny" numberOfLines={1}>
+                {subtitle}
+              </Text>
+            )}
           </View>
           {right}
         </View>
@@ -345,6 +252,24 @@ export function Header({
   )
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
-})
+export function IconButton({ icon: Icon, label, onPress, tone = "light" }: { icon: typeof Check; label: string; onPress?: () => void; tone?: "light" | "dark" }) {
+  const dark = tone === "dark"
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      hitSlop={4}
+      style={({ pressed }) => [
+        { width: 40, height: 40, borderRadius: radius.control, alignItems: "center", justifyContent: "center" },
+        dark ? { borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" } : { backgroundColor: color.raised },
+        pressed && { opacity: 0.8 },
+      ]}
+    >
+      <Icon size={18} color={dark ? "#fff" : color.ink} strokeWidth={2} />
+    </Pressable>
+  )
+}
+
+/** "SKU-001" in a quiet mono chip. */
+export const Sku = ({ code }: { code: string }) => <RNText style={{ fontFamily: mono, fontSize: 12, color: color.muted }}>{code}</RNText>
